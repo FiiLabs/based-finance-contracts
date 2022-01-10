@@ -9,11 +9,11 @@ module.exports = {
       network_id: "*", // Connect to any network
     },
   },
-  contracts_directory: "./contracts/",
+  contracts_directory: "./contracts",
   contracts_build_directory: "./truffle_abis",
   compilers: {
     solc: {
-      version: "^0.5.0",
+      version: "^0.8.0",
       optimizer: {
         enabled: true,
         runs: 200,
