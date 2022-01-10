@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
-
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "./owner/Operator.sol";
+pragma solidity ^0.8.0;
+/*
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./owner/Operat.sol";
 import "./interfaces/ITaxable.sol";
 import "./interfaces/IUniswapV2Router.sol";
 import "./interfaces/IERC20.sol";
 
+*/
 /*
   ______                __       _______
  /_  __/___  ____ ___  / /_     / ____(_)___  ____ _____  ________
@@ -16,7 +17,8 @@ import "./interfaces/IERC20.sol";
 /_/  \____/_/ /_/ /_/_.___/  /_/   /_/_/ /_/\__,_/_/ /_/\___/\___/
 
     http://tomb.finance
-*/
+*//*
+
 contract TaxOfficeV2 is Operator {
     using SafeMath for uint256;
 
@@ -193,3 +195,4 @@ contract TaxOfficeV2 is Operator {
         }
     }
 }
+*/

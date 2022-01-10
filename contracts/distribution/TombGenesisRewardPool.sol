@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 // Note that this pool has no minter key of TOMB (rewards).
 // Instead, the governance will call TOMB distributeReward method and send reward to this pool at the beginning.
@@ -69,7 +69,7 @@ contract TombGenesisRewardPool {
         address _tomb,
         address _shiba,
         uint256 _poolStartTime
-    ) public {
+    ) {
         require(block.timestamp < _poolStartTime, "late");
         if (_tomb != address(0)) tomb = IERC20(_tomb);
         if (_shiba != address(0)) shiba = _shiba;

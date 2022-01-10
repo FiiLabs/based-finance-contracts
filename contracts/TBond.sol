@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 import "./owner/Operator.sol";
 
@@ -19,7 +19,7 @@ contract TBond is ERC20Burnable, Operator {
     /**
      * @notice Constructs the TOMB Bond ERC-20 contract.
      */
-    constructor() public ERC20("TBOND", "TBOND") {}
+    constructor() ERC20("TBOND", "TBOND") {}
 
     /**
      * @notice Operator mints basis bonds to a recipient

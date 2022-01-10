@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
-import "@openzeppelin/contracts/math/Math.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./lib/SafeMath8.sol";
 import "./owner/Operator.sol";
@@ -70,7 +70,7 @@ contract Tomb is ERC20Burnable, Operator {
     /**
      * @notice Constructs the TOMB ERC-20 contract.
      */
-    constructor(uint256 _taxRate, address _taxCollectorAddress) public ERC20("TOMB", "TOMB") {
+    constructor(uint256 _taxRate, address _taxCollectorAddress) ERC20("TOMB", "TOMB") {
         // Mints 1 TOMB to contract creator for initial pool setup
         require(_taxRate < 10000, "tax equal or bigger to 100%");
         require(_taxCollectorAddress != address(0), "tax collector address must be non-zero address");
@@ -118,6 +118,7 @@ contract Tomb is ERC20Burnable, Operator {
 
     function setBurnThreshold(uint256 _burnThreshold) public onlyTaxOffice returns (bool) {
         burnThreshold = _burnThreshold;
+        return true;
     }
 
     function _getTombPrice() internal view returns (uint256 _tombPrice) {

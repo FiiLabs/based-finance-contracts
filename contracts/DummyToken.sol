@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 import "./owner/Operator.sol";
 
 contract DummyToken is ERC20Burnable, Operator {
 
-    constructor() public ERC20("DummyToken", "DUMMY") {}
+    constructor() ERC20("DummyToken", "DUMMY") {}
 
     function mint(address recipient_, uint256 amount_) public onlyOperator returns (bool) {
         uint256 balanceBefore = balanceOf(recipient_);
