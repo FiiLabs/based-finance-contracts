@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.6.12;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "./lib/Babylonian.sol";
 import "./lib/FixedPoint.sol";
@@ -45,7 +45,7 @@ contract Oracle is Epoch {
         IUniswapV2Pair _pair,
         uint256 _period,
         uint256 _startTime
-    ) public Epoch(_period, _startTime, 0) {
+    ) Epoch(_period, _startTime, 0) {
         pair = _pair;
         token0 = pair.token0();
         token1 = pair.token1();
