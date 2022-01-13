@@ -17,7 +17,7 @@ import "./interfaces/ITaxable.sol";
 contract TaxOffice is Operator {
     address public tomb;
 
-    constructor(address _tomb) public {
+    constructor(address _tomb) {
         require(_tomb != address(0), "tomb address cannot be 0");
         tomb = _tomb;
     }

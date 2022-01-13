@@ -26,7 +26,7 @@ contract TombTaxOracle is Ownable {
         address _tomb,
         address _wftm,
         address _pair
-    ) public {
+    ) {
         require(_tomb != address(0), "tomb address cannot be 0");
         require(_wftm != address(0), "wftm address cannot be 0");
         require(_pair != address(0), "pair address cannot be 0");
@@ -35,7 +35,8 @@ contract TombTaxOracle is Ownable {
         pair = _pair;
     }
 
-    function consult(address _token, uint256 _amountIn) external view returns (uint144 amountOut) {
+    //TODO figure out if uint256 _amountIn is required
+    function consult(address _token /*uint256 _amountIn*/) external view returns (uint144 amountOut) {
         require(_token == address(tomb), "token needs to be tomb");
         uint256 tombBalance = tomb.balanceOf(pair);
         uint256 wftmBalance = wftm.balanceOf(pair);

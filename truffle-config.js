@@ -1,5 +1,6 @@
 require("babel-register");
 require("babel-polyfill");
+require('dotenv').config()
 
 module.exports = {
   networks: {
@@ -9,8 +10,8 @@ module.exports = {
       network_id: "*", // Connect to any network
     },
   },
-  contracts_directory: "./contracts",
-  contracts_build_directory: "./truffle_abis",
+  contracts_directory: "./contracts/",
+  contracts_build_directory: "./truffle_abis/",
   compilers: {
     solc: {
       version: "^0.8.0",
@@ -18,6 +19,7 @@ module.exports = {
         enabled: true,
         runs: 200,
       },
+      evmVersion: "petersburg"
     },
   },
 };
