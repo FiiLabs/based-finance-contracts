@@ -13,12 +13,16 @@ const config: HardhatUserConfig = {
     fantom: {
       url: 'https://rpc.testnet.fantom.network/',
       accounts: [`${process.env.METAMASK_KEY}`]
+    },
+    rinkeby: {
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_RINKEBY_API_KEY}`,
+      accounts: [`${process.env.METAMASK_KEY}`]
     }
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: `${process.env.FANTOM_API_KEY}`
+    apiKey: `${process.env.ETHERSCAN_API_KEY}`
   },
 };
 
