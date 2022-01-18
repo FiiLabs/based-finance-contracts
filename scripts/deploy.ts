@@ -22,7 +22,7 @@ async function main() {
   console.log(`Account balance: ${balance.toString()}`);
 
   const Based = await ethers.getContractFactory("Based");
-  const based = await Based.deploy(0, "0x1252E3f03E0caa840cbb35442d817a1686A62586");
+  const based = await Based.deploy(0, process.env.BASED_DEPLOY_ADDRESS);
   await based.deployed();
 
   console.log(`Token address: ${based.address}`);

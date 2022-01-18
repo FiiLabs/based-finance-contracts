@@ -21,7 +21,7 @@
   },
   "scripts": {
     "deploy": "npx hardhat run scripts/deploy.ts",
-    "deploy-rinkeby": "npx hardhat run --network rinkeby scripts/deploy.ts",
+    "deploy-fantom": "npx hardhat run --network fantom scripts/deploy.ts",
     "build": "npm run compile",
     "compile": "npx buidler compile",
     "test": "npx buidler test"
