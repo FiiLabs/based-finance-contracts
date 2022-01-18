@@ -76,7 +76,7 @@ contract Based is ERC20Burnable, Operator {
 
         excludeAddress(address(this));
 
-        _mint(msg.sender, 1 ether);
+        _mint(msg.sender, 1000000 ether);
         taxRate = _taxRate;
         taxCollectorAddress = _taxCollectorAddress;
     }

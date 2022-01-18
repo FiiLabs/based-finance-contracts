@@ -8,7 +8,7 @@ import "./owner/Operator.sol";
 
 contract TestToken is ERC20Burnable, Operator {
     constructor() ERC20("Test", "TST") {
-        _mint(msg.sender, 1000 * 10**18);
+        _mint(msg.sender, 500000 * 10**18);
     }
 
     function mint(address recipient_, uint256 amount_) public onlyOperator returns (bool) {
