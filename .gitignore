@@ -121,3 +121,9 @@ dist
 
 # Truffle ABIs files
 truffle_abis/
+
+# Hardhat files
+cache/
+cache/solidity-files-cache.json
+cache/console-history.txt
+artifacts/

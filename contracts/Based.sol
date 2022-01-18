@@ -10,31 +10,30 @@ import "./owner/Operator.sol";
 import "./interfaces/IOracle.sol";
 
 /*
-  ______                __       _______
- /_  __/___  ____ ___  / /_     / ____(_)___  ____ _____  ________
-  / / / __ \/ __ `__ \/ __ \   / /_  / / __ \/ __ `/ __ \/ ___/ _ \
- / / / /_/ / / / / / / /_/ /  / __/ / / / / / /_/ / / / / /__/  __/
-/_/  \____/_/ /_/ /_/_.___/  /_/   /_/_/ /_/\__,_/_/ /_/\___/\___/
-
-    http://tomb.finance
+__________                             .___   ___________.__
+\______   \_____     ______  ____    __| _/   \_   _____/|__|  ____  _____     ____    ____   ____
+ |    |  _/\__  \   /  ___/_/ __ \  / __ |     |    __)  |  | /    \ \__  \   /    \ _/ ___\_/ __ \
+ |    |   \ / __ \_ \___ \ \  ___/ / /_/ |     |     \   |  ||   |  \ / __ \_|   |  \\  \___\  ___/
+ |______  /(____  //____  > \___  >\____ |     \___  /   |__||___|  /(____  /|___|  / \___  >\___  >
+        \/      \/      \/      \/      \/         \/             \/      \/      \/      \/     \/
 */
-contract Tomb is ERC20Burnable, Operator {
+contract Based is ERC20Burnable, Operator {
     using SafeMath8 for uint8;
     using SafeMath for uint256;
 
     // Initial distribution for the first 24h genesis pools
-    uint256 public constant INITIAL_GENESIS_POOL_DISTRIBUTION = 11000 ether;
-    // Initial distribution for the day 2-5 TOMB-WFTM LP -> TOMB pool
-    uint256 public constant INITIAL_TOMB_POOL_DISTRIBUTION = 140000 ether;
+    uint256 public constant INITIAL_GENESIS_POOL_DISTRIBUTION = 7000 ether;
+    // Initial distribution for the day 2-5 BASED-TOMB LP -> BASED pool
+    uint256 public constant INITIAL_BASED_POOL_DISTRIBUTION = 63000 ether;
     // Distribution for airdrops wallet
-    uint256 public constant INITIAL_AIRDROP_WALLET_DISTRIBUTION = 9000 ether;
+    // uint256 public constant INITIAL_AIRDROP_WALLET_DISTRIBUTION = 9000 ether;
 
     // Have the rewards been distributed to the pools
     bool public rewardPoolDistributed = false;
 
     /* ================= Taxation =============== */
     // Address of the Oracle
-    address public tombOracle;
+    address public basedOracle;
     // Address of the Tax Office
     address public taxOffice;
 
@@ -68,10 +67,10 @@ contract Tomb is ERC20Burnable, Operator {
     }
 
     /**
-     * @notice Constructs the TOMB ERC-20 contract.
+     * @notice Constructs the BASED ERC-20 contract.
      */
-    constructor(uint256 _taxRate, address _taxCollectorAddress) ERC20("TOMB", "TOMB") {
-        // Mints 1 TOMB to contract creator for initial pool setup
+    constructor(uint256 _taxRate, address _taxCollectorAddress) ERC20("BASED", "BASED") {
+        // Mints 1 BASED to contract creator for initial pool setup
         require(_taxRate < 10000, "tax equal or bigger to 100%");
         require(_taxCollectorAddress != address(0), "tax collector address must be non-zero address");
 
@@ -118,21 +117,23 @@ contract Tomb is ERC20Burnable, Operator {
 
     function setBurnThreshold(uint256 _burnThreshold) public onlyTaxOffice returns (bool) {
         burnThreshold = _burnThreshold;
+        //TODO Figure out if return needed
         return true;
     }
 
-    function _getTombPrice() internal view returns (uint256 _tombPrice) {
-        try IOracle(tombOracle).consult(address(this), 1e18) returns (uint144 _price) {
+    //TODO Figure out if return is correct
+    function _getBasedPrice() internal view returns (uint256 _basedPrice) {
+        try IOracle(basedOracle).consult(address(this), 1e18) returns (uint144 _price) {
             return uint256(_price);
         } catch {
-            revert("Tomb: failed to fetch TOMB price from Oracle");
+            revert("Based: failed to fetch BASED price from Oracle");
         }
     }
 
-    function _updateTaxRate(uint256 _tombPrice) internal returns (uint256){
+    function _updateTaxRate(uint256 _basedPrice) internal returns (uint256){
         if (autoCalculateTax) {
             for (uint8 tierId = uint8(getTaxTiersTwapsCount()).sub(1); tierId >= 0; --tierId) {
-                if (_tombPrice >= taxTiersTwaps[tierId]) {
+                if (_basedPrice >= taxTiersTwaps[tierId]) {
                     require(taxTiersRates[tierId] < 10000, "tax equal or bigger to 100%");
                     taxRate = taxTiersRates[tierId];
                     return taxTiersRates[tierId];
@@ -149,9 +150,9 @@ contract Tomb is ERC20Burnable, Operator {
         autoCalculateTax = false;
     }
 
-    function setTombOracle(address _tombOracle) public onlyOperatorOrTaxOffice {
-        require(_tombOracle != address(0), "oracle address cannot be 0 address");
-        tombOracle = _tombOracle;
+    function setBasedOracle(address _basedOracle) public onlyOperatorOrTaxOffice {
+        require(_basedOracle != address(0), "oracle address cannot be 0 address");
+        basedOracle = _basedOracle;
     }
 
     function setTaxOffice(address _taxOffice) public onlyOperatorOrTaxOffice {
@@ -184,9 +185,9 @@ contract Tomb is ERC20Burnable, Operator {
     }
 
     /**
-     * @notice Operator mints TOMB to a recipient
+     * @notice Operator mints BASED to a recipient
      * @param recipient_ The address of recipient
-     * @param amount_ The amount of TOMB to mint to
+     * @param amount_ The amount of BASED to mint to
      * @return whether the process has been done
      */
     function mint(address recipient_, uint256 amount_) public onlyOperator returns (bool) {
@@ -214,9 +215,9 @@ contract Tomb is ERC20Burnable, Operator {
         bool burnTax = false;
 
         if (autoCalculateTax) {
-            uint256 currentTombPrice = _getTombPrice();
-            currentTaxRate = _updateTaxRate(currentTombPrice);
-            if (currentTombPrice < burnThreshold) {
+            uint256 currentBasedPrice = _getBasedPrice();
+            currentTaxRate = _updateTaxRate(currentBasedPrice);
+            if (currentBasedPrice < burnThreshold) {
                 burnTax = true;
             }
         }
@@ -260,17 +261,17 @@ contract Tomb is ERC20Burnable, Operator {
      */
     function distributeReward(
         address _genesisPool,
-        address _tombPool,
-        address _airdropWallet
+        address _basedPool
+        // address _airdropWallet
     ) external onlyOperator {
         require(!rewardPoolDistributed, "only can distribute once");
         require(_genesisPool != address(0), "!_genesisPool");
-        require(_tombPool != address(0), "!_tombPool");
-        require(_airdropWallet != address(0), "!_airdropWallet");
+        require(_basedPool != address(0), "!_basedPool");
+        // require(_airdropWallet != address(0), "!_airdropWallet");
         rewardPoolDistributed = true;
         _mint(_genesisPool, INITIAL_GENESIS_POOL_DISTRIBUTION);
-        _mint(_tombPool, INITIAL_TOMB_POOL_DISTRIBUTION);
-        _mint(_airdropWallet, INITIAL_AIRDROP_WALLET_DISTRIBUTION);
+        _mint(_basedPool, INITIAL_BASED_POOL_DISTRIBUTION);
+        // _mint(_airdropWallet, INITIAL_AIRDROP_WALLET_DISTRIBUTION);
     }
 
     function governanceRecoverUnsupported(

@@ -6,9 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 import "./owner/Operator.sol";
 
-contract DummyToken is ERC20Burnable, Operator {
-
-    constructor() ERC20("DummyToken", "DUMMY") {}
+contract TestToken is ERC20Burnable, Operator {
+    constructor() ERC20("Test", "TST") {
+        _mint(msg.sender, 1000 * 10**18);
+    }
 
     function mint(address recipient_, uint256 amount_) public onlyOperator returns (bool) {
         uint256 balanceBefore = balanceOf(recipient_);

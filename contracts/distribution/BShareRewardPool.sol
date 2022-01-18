@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-// Note that this pool has no minter key of TOMB (rewards).
-// Instead, the governance will call TOMB distributeReward method and send reward to this pool at the beginning.
-contract TombGenesisRewardPool {
+// Note that this pool has no minter key of bSHARE (rewards).
+// Instead, the governance will call bSHARE distributeReward method and send reward to this pool at the beginning.
+contract BShareRewardPool {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -17,21 +17,20 @@ contract TombGenesisRewardPool {
 
     // Info of each user.
     struct UserInfo {
-        uint256 amount; // How many tokens the user has provided.
+        uint256 amount; // How many LP tokens the user has provided.
         uint256 rewardDebt; // Reward debt. See explanation below.
     }
 
     // Info of each pool.
     struct PoolInfo {
         IERC20 token; // Address of LP token contract.
-        uint256 allocPoint; // How many allocation points assigned to this pool. TOMB to distribute.
-        uint256 lastRewardTime; // Last time that TOMB distribution occurs.
-        uint256 accTombPerShare; // Accumulated TOMB per share, times 1e18. See below.
-        bool isStarted; // if lastRewardBlock has passed
+        uint256 allocPoint; // How many allocation points assigned to this pool. bSHAREs to distribute per block.
+        uint256 lastRewardTime; // Last time that bSHAREs distribution occurs.
+        uint256 accBSharePerShare; // Accumulated bSHAREs per share, times 1e18. See below.
+        bool isStarted; // if lastRewardTime has passed
     }
 
-    IERC20 public tomb;
-    address public shiba;
+    IERC20 public bshare;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -42,55 +41,42 @@ contract TombGenesisRewardPool {
     // Total allocation points. Must be the sum of all allocation points in all pools.
     uint256 public totalAllocPoint = 0;
 
-    // The time when TOMB mining starts.
+    // The time when bSHARE mining starts.
     uint256 public poolStartTime;
 
-    // The time when TOMB mining ends.
+    // The time when bSHARE mining ends.
     uint256 public poolEndTime;
 
-    // TESTNET
-    uint256 public tombPerSecond = 3.0555555 ether; // 11000 TOMB / (1h * 60min * 60s)
-    uint256 public runningTime = 24 hours; // 1 hours
-    uint256 public constant TOTAL_REWARDS = 11000 ether;
-    // END TESTNET
-
-    // MAINNET
-    // uint256 public tombPerSecond = 0.11574 ether; // 10000 TOMB / (24h * 60min * 60s)
-    // uint256 public runningTime = 1 days; // 1 days
-    // uint256 public constant TOTAL_REWARDS = 10000 ether;
-    // END MAINNET
+    uint256 public bSharePerSecond = 0.00186122 ether; // 59500 bshare / (370 days * 24h * 60min * 60s)
+    uint256 public runningTime = 370 days; // 370 days
+    uint256 public constant TOTAL_REWARDS = 59500 ether;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event RewardPaid(address indexed user, uint256 amount);
 
-    constructor(
-        address _tomb,
-        address _shiba,
-        uint256 _poolStartTime
-    ) {
+    constructor(address _bshare, uint256 _poolStartTime) {
         require(block.timestamp < _poolStartTime, "late");
-        if (_tomb != address(0)) tomb = IERC20(_tomb);
-        if (_shiba != address(0)) shiba = _shiba;
+        if (_bshare != address(0)) bshare = IERC20(_bshare);
         poolStartTime = _poolStartTime;
         poolEndTime = poolStartTime + runningTime;
         operator = msg.sender;
     }
 
     modifier onlyOperator() {
-        require(operator == msg.sender, "TombGenesisPool: caller is not the operator");
+        require(operator == msg.sender, "BShareRewardPool: caller is not the operator");
         _;
     }
 
     function checkPoolDuplicate(IERC20 _token) internal view {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
-            require(poolInfo[pid].token != _token, "TombGenesisPool: existing pool?");
+            require(poolInfo[pid].token != _token, "BShareRewardPool: existing pool?");
         }
     }
 
-    // Add a new token to the pool. Can only be called by the owner.
+    // Add a new lp to the pool. Can only be called by the owner.
     function add(
         uint256 _allocPoint,
         IERC20 _token,
@@ -116,29 +102,19 @@ contract TombGenesisRewardPool {
                 _lastRewardTime = block.timestamp;
             }
         }
-        bool _isStarted =
-        (_lastRewardTime <= poolStartTime) ||
-        (_lastRewardTime <= block.timestamp);
-        poolInfo.push(PoolInfo({
-            token : _token,
-            allocPoint : _allocPoint,
-            lastRewardTime : _lastRewardTime,
-            accTombPerShare : 0,
-            isStarted : _isStarted
-            }));
+        bool _isStarted = (_lastRewardTime <= poolStartTime) || (_lastRewardTime <= block.timestamp);
+        poolInfo.push(PoolInfo({token: _token, allocPoint: _allocPoint, lastRewardTime: _lastRewardTime, accBSharePerShare: 0, isStarted: _isStarted}));
         if (_isStarted) {
             totalAllocPoint = totalAllocPoint.add(_allocPoint);
         }
     }
 
-    // Update the given pool's TOMB allocation point. Can only be called by the owner.
+    // Update the given pool's bSHARE allocation point. Can only be called by the owner.
     function set(uint256 _pid, uint256 _allocPoint) public onlyOperator {
         massUpdatePools();
         PoolInfo storage pool = poolInfo[_pid];
         if (pool.isStarted) {
-            totalAllocPoint = totalAllocPoint.sub(pool.allocPoint).add(
-                _allocPoint
-            );
+            totalAllocPoint = totalAllocPoint.sub(pool.allocPoint).add(_allocPoint);
         }
         pool.allocPoint = _allocPoint;
     }
@@ -148,27 +124,27 @@ contract TombGenesisRewardPool {
         if (_fromTime >= _toTime) return 0;
         if (_toTime >= poolEndTime) {
             if (_fromTime >= poolEndTime) return 0;
-            if (_fromTime <= poolStartTime) return poolEndTime.sub(poolStartTime).mul(tombPerSecond);
-            return poolEndTime.sub(_fromTime).mul(tombPerSecond);
+            if (_fromTime <= poolStartTime) return poolEndTime.sub(poolStartTime).mul(bSharePerSecond);
+            return poolEndTime.sub(_fromTime).mul(bSharePerSecond);
         } else {
             if (_toTime <= poolStartTime) return 0;
-            if (_fromTime <= poolStartTime) return _toTime.sub(poolStartTime).mul(tombPerSecond);
-            return _toTime.sub(_fromTime).mul(tombPerSecond);
+            if (_fromTime <= poolStartTime) return _toTime.sub(poolStartTime).mul(bSharePerSecond);
+            return _toTime.sub(_fromTime).mul(bSharePerSecond);
         }
     }
 
-    // View function to see pending TOMB on frontend.
-    function pendingTOMB(uint256 _pid, address _user) external view returns (uint256) {
+    // View function to see pending bSHAREs on frontend.
+    function pendingShare(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
-        uint256 accTombPerShare = pool.accTombPerShare;
+        uint256 accBSharePerShare = pool.accBSharePerShare;
         uint256 tokenSupply = pool.token.balanceOf(address(this));
         if (block.timestamp > pool.lastRewardTime && tokenSupply != 0) {
             uint256 _generatedReward = getGeneratedReward(pool.lastRewardTime, block.timestamp);
-            uint256 _tombReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
-            accTombPerShare = accTombPerShare.add(_tombReward.mul(1e18).div(tokenSupply));
+            uint256 _bshareReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
+            accBSharePerShare = accBSharePerShare.add(_bshareReward.mul(1e18).div(tokenSupply));
         }
-        return user.amount.mul(accTombPerShare).div(1e18).sub(user.rewardDebt);
+        return user.amount.mul(accBSharePerShare).div(1e18).sub(user.rewardDebt);
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
@@ -196,8 +172,8 @@ contract TombGenesisRewardPool {
         }
         if (totalAllocPoint > 0) {
             uint256 _generatedReward = getGeneratedReward(pool.lastRewardTime, block.timestamp);
-            uint256 _tombReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
-            pool.accTombPerShare = pool.accTombPerShare.add(_tombReward.mul(1e18).div(tokenSupply));
+            uint256 _bshareReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
+            pool.accBSharePerShare = pool.accBSharePerShare.add(_bshareReward.mul(1e18).div(tokenSupply));
         }
         pool.lastRewardTime = block.timestamp;
     }
@@ -209,21 +185,17 @@ contract TombGenesisRewardPool {
         UserInfo storage user = userInfo[_pid][_sender];
         updatePool(_pid);
         if (user.amount > 0) {
-            uint256 _pending = user.amount.mul(pool.accTombPerShare).div(1e18).sub(user.rewardDebt);
+            uint256 _pending = user.amount.mul(pool.accBSharePerShare).div(1e18).sub(user.rewardDebt);
             if (_pending > 0) {
-                safeTombTransfer(_sender, _pending);
+                safeBShareTransfer(_sender, _pending);
                 emit RewardPaid(_sender, _pending);
             }
         }
         if (_amount > 0) {
             pool.token.safeTransferFrom(_sender, address(this), _amount);
-            if(address(pool.token) == shiba) {
-                user.amount = user.amount.add(_amount.mul(9900).div(10000));
-            } else {
-                user.amount = user.amount.add(_amount);
-            }
+            user.amount = user.amount.add(_amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accTombPerShare).div(1e18);
+        user.rewardDebt = user.amount.mul(pool.accBSharePerShare).div(1e18);
         emit Deposit(_sender, _pid, _amount);
     }
 
@@ -234,16 +206,16 @@ contract TombGenesisRewardPool {
         UserInfo storage user = userInfo[_pid][_sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 _pending = user.amount.mul(pool.accTombPerShare).div(1e18).sub(user.rewardDebt);
+        uint256 _pending = user.amount.mul(pool.accBSharePerShare).div(1e18).sub(user.rewardDebt);
         if (_pending > 0) {
-            safeTombTransfer(_sender, _pending);
+            safeBShareTransfer(_sender, _pending);
             emit RewardPaid(_sender, _pending);
         }
         if (_amount > 0) {
             user.amount = user.amount.sub(_amount);
             pool.token.safeTransfer(_sender, _amount);
         }
-        user.rewardDebt = user.amount.mul(pool.accTombPerShare).div(1e18);
+        user.rewardDebt = user.amount.mul(pool.accBSharePerShare).div(1e18);
         emit Withdraw(_sender, _pid, _amount);
     }
 
@@ -258,14 +230,14 @@ contract TombGenesisRewardPool {
         emit EmergencyWithdraw(msg.sender, _pid, _amount);
     }
 
-    // Safe TOMB transfer function, just in case if rounding error causes pool to not have enough TOMBs.
-    function safeTombTransfer(address _to, uint256 _amount) internal {
-        uint256 _tombBalance = tomb.balanceOf(address(this));
-        if (_tombBalance > 0) {
-            if (_amount > _tombBalance) {
-                tomb.safeTransfer(_to, _tombBalance);
+    // Safe bshare transfer function, just in case if rounding error causes pool to not have enough bSHAREs.
+    function safeBShareTransfer(address _to, uint256 _amount) internal {
+        uint256 _bshareBal = bshare.balanceOf(address(this));
+        if (_bshareBal > 0) {
+            if (_amount > _bshareBal) {
+                bshare.safeTransfer(_to, _bshareBal);
             } else {
-                tomb.safeTransfer(_to, _amount);
+                bshare.safeTransfer(_to, _amount);
             }
         }
     }
@@ -274,10 +246,14 @@ contract TombGenesisRewardPool {
         operator = _operator;
     }
 
-    function governanceRecoverUnsupported(IERC20 _token, uint256 amount, address to) external onlyOperator {
+    function governanceRecoverUnsupported(
+        IERC20 _token,
+        uint256 amount,
+        address to
+    ) external onlyOperator {
         if (block.timestamp < poolEndTime + 90 days) {
-            // do not allow to drain core token (TOMB or lps) if less than 90 days after pool ends
-            require(_token != tomb, "tomb");
+            // do not allow to drain core token (bSHARE or lps) if less than 90 days after pool ends
+            require(_token != bshare, "bshare");
             uint256 length = poolInfo.length;
             for (uint256 pid = 0; pid < length; ++pid) {
                 PoolInfo storage pool = poolInfo[pid];

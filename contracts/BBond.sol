@@ -7,19 +7,18 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./owner/Operator.sol";
 
 /*
-  ______                __       _______
- /_  __/___  ____ ___  / /_     / ____(_)___  ____ _____  ________
-  / / / __ \/ __ `__ \/ __ \   / /_  / / __ \/ __ `/ __ \/ ___/ _ \
- / / / /_/ / / / / / / /_/ /  / __/ / / / / / /_/ / / / / /__/  __/
-/_/  \____/_/ /_/ /_/_.___/  /_/   /_/_/ /_/\__,_/_/ /_/\___/\___/
-
-    http://tomb.finance
+__________                             .___   ___________.__
+\______   \_____     ______  ____    __| _/   \_   _____/|__|  ____  _____     ____    ____   ____
+ |    |  _/\__  \   /  ___/_/ __ \  / __ |     |    __)  |  | /    \ \__  \   /    \ _/ ___\_/ __ \
+ |    |   \ / __ \_ \___ \ \  ___/ / /_/ |     |     \   |  ||   |  \ / __ \_|   |  \\  \___\  ___/
+ |______  /(____  //____  > \___  >\____ |     \___  /   |__||___|  /(____  /|___|  / \___  >\___  >
+        \/      \/      \/      \/      \/         \/             \/      \/      \/      \/     \/
 */
-contract TBond is ERC20Burnable, Operator {
+contract BBond is ERC20Burnable, Operator {
     /**
-     * @notice Constructs the TOMB Bond ERC-20 contract.
+     * @notice Constructs the BASED Bond ERC-20 contract.
      */
-    constructor() ERC20("TBOND", "TBOND") {}
+    constructor() ERC20("BBOND", "BBOND") {}
 
     /**
      * @notice Operator mints basis bonds to a recipient

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IMasonry {
+interface IAcropolis {
     function balanceOf(address _mason) external view returns (uint256);
 
     function earned(address _mason) external view returns (uint256);

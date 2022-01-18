@@ -8,18 +8,17 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./owner/Operator.sol";
 
 /*
-  ______                __       _______
- /_  __/___  ____ ___  / /_     / ____(_)___  ____ _____  ________
-  / / / __ \/ __ `__ \/ __ \   / /_  / / __ \/ __ `/ __ \/ ___/ _ \
- / / / /_/ / / / / / / /_/ /  / __/ / / / / / /_/ / / / / /__/  __/
-/_/  \____/_/ /_/ /_/_.___/  /_/   /_/_/ /_/\__,_/_/ /_/\___/\___/
-
-    http://tomb.finance
+__________                             .___   ___________.__
+\______   \_____     ______  ____    __| _/   \_   _____/|__|  ____  _____     ____    ____   ____
+ |    |  _/\__  \   /  ___/_/ __ \  / __ |     |    __)  |  | /    \ \__  \   /    \ _/ ___\_/ __ \
+ |    |   \ / __ \_ \___ \ \  ___/ / /_/ |     |     \   |  ||   |  \ / __ \_|   |  \\  \___\  ___/
+ |______  /(____  //____  > \___  >\____ |     \___  /   |__||___|  /(____  /|___|  / \___  >\___  >
+        \/      \/      \/      \/      \/         \/             \/      \/      \/      \/     \/
 */
-contract TShare is ERC20Burnable, Operator {
+contract BShare is ERC20Burnable, Operator {
     using SafeMath for uint256;
 
-    // TOTAL MAX SUPPLY = 70,000 tSHAREs
+    // TOTAL MAX SUPPLY = 70,000 bSHAREs
     uint256 public constant FARMING_POOL_REWARD_ALLOCATION = 59500 ether;
     uint256 public constant COMMUNITY_FUND_POOL_ALLOCATION = 5500 ether;
     uint256 public constant DEV_FUND_POOL_ALLOCATION = 5000 ether;
@@ -39,8 +38,12 @@ contract TShare is ERC20Burnable, Operator {
 
     bool public rewardPoolDistributed = false;
 
-    constructor(uint256 _startTime, address _communityFund, address _devFund) ERC20("TSHARE", "TSHARE") {
-        _mint(msg.sender, 1 ether); // mint 1 TOMB Share for initial pools deployment
+    constructor(
+        uint256 _startTime,
+        address _communityFund,
+        address _devFund
+    ) ERC20("BSHARE", "BSHARE") {
+        _mint(msg.sender, 1 ether); // mint 1 BShare for initial pools deployment
 
         startTime = _startTime;
         endTime = startTime + VESTING_DURATION;
