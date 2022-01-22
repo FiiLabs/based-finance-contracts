@@ -23,8 +23,8 @@
     "deploy": "npx hardhat run scripts/deploy.ts",
     "deploy-fantom": "npx hardhat run --network fantom scripts/deploy.ts",
     "build": "npm run compile",
-    "compile": "npx buidler compile",
-    "test": "npx buidler test"
+    "compile": "npx builder compile",
+    "test": "npx builder test"
   },
   "repository": {
     "type": "git",

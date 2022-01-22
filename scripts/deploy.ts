@@ -21,11 +21,11 @@ async function main() {
 
   console.log(`Account balance: ${balance.toString()}`);
 
-  const Based = await ethers.getContractFactory("Based");
-  const based = await Based.deploy(0, process.env.BASED_DEPLOY_ADDRESS);
-  await based.deployed();
+  const Contract = await ethers.getContractFactory("BasedRewardPool");
+  const contract = await Contract.deploy('0x4C6Dcd080167467DB016952D033FB311e37793dB', 1642544678+86500);
+  await contract.deployed();
 
-  console.log(`Token address: ${based.address}`);
+  console.log(`Token address: ${contract.address}`);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
