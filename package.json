@@ -22,6 +22,7 @@
   "scripts": {
     "deploy": "npx hardhat run scripts/deploy.ts",
     "deploy-fantom": "npx hardhat run --network fantom scripts/deploy.ts",
+    "verify-rinkeby": "npx hardhat verify --constructor-args scripts/verifyArgs.ts 0x4D06f72DdbA5EDaA240e5cc657553e89c2De7944 --network rinkeby",
     "build": "npm run compile",
     "compile": "npx buidler compile",
     "test": "npx buidler test"
@@ -46,6 +47,7 @@
   },
   "homepage": "https://github.com/David-Guras/basedmoneyfinance-contracts#readme",
   "devDependencies": {
+    "@nomiclabs/buidler": "^1.4.8",
     "@nomiclabs/hardhat-ethers": "^2.0.4",
     "@nomiclabs/hardhat-etherscan": "^3.0.0",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
