@@ -3,13 +3,13 @@
 pragma solidity ^0.8.0;
 
 interface IAcropolis {
-    function balanceOf(address _mason) external view returns (uint256);
+    function balanceOf(address _andras) external view returns (uint256);
 
-    function earned(address _mason) external view returns (uint256);
+    function earned(address _andras) external view returns (uint256);
 
-    function canWithdraw(address _mason) external view returns (bool);
+    function canWithdraw(address _andras) external view returns (bool);
 
-    function canClaimReward(address _mason) external view returns (bool);
+    function canClaimReward(address _andras) external view returns (bool);
 
     function epoch() external view returns (uint256);
 

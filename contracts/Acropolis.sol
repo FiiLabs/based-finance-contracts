@@ -34,10 +34,10 @@ contract ShareWrapper {
     }
 
     function withdraw(uint256 amount) public virtual {
-        uint256 masonShare = _balances[msg.sender];
-        require(masonShare >= amount, "Acropolis: withdraw request greater than staked amount");
+        uint256 andrasShare = _balances[msg.sender];
+        require(andrasShare >= amount, "Acropolis: withdraw request greater than staked amount");
         _totalSupply = _totalSupply.sub(amount);
-        _balances[msg.sender] = masonShare.sub(amount);
+        _balances[msg.sender] = andrasShare.sub(amount);
         share.safeTransfer(msg.sender, amount);
     }
 }
@@ -57,7 +57,7 @@ contract Acropolis is ShareWrapper, ContractGuard {
 
     /* ========== DATA STRUCTURES ========== */
 
-    struct Masonseat {
+    struct Ecclesiaseat {
         uint256 lastSnapshotIndex;
         uint256 rewardEarned;
         uint256 epochTimerStart;
@@ -80,7 +80,7 @@ contract Acropolis is ShareWrapper, ContractGuard {
     IERC20 public based;
     ITreasury public treasury;
 
-    mapping(address => Masonseat) public masons;
+    mapping(address => Ecclesiaseat) public demos;
     AcropolisSnapshot[] public acropolisHistory;
 
     uint256 public withdrawLockupEpochs;
@@ -101,17 +101,17 @@ contract Acropolis is ShareWrapper, ContractGuard {
         _;
     }
 
-    modifier masonExists {
-        require(balanceOf(msg.sender) > 0, "Acropolis: The mason does not exist");
+    modifier andrasExists {
+        require(balanceOf(msg.sender) > 0, "Acropolis: The andras does not exist");
         _;
     }
 
-    modifier updateReward(address mason) {
-        if (mason != address(0)) {
-            Masonseat memory seat = masons[mason];
-            seat.rewardEarned = earned(mason);
+    modifier updateReward(address andras) {
+        if (andras != address(0)) {
+            Ecclesiaseat memory seat = demos[andras];
+            seat.rewardEarned = earned(andras);
             seat.lastSnapshotIndex = latestSnapshotIndex();
-            masons[mason] = seat;
+            demos[andras] = seat;
         }
         _;
     }
@@ -155,7 +155,7 @@ contract Acropolis is ShareWrapper, ContractGuard {
 
     /* ========== VIEW FUNCTIONS ========== */
 
-    // =========== Snapshot getters
+    // =========== Snapshot getters =========== //
 
     function latestSnapshotIndex() public view returns (uint256) {
         return acropolisHistory.length.sub(1);
@@ -165,20 +165,20 @@ contract Acropolis is ShareWrapper, ContractGuard {
         return acropolisHistory[latestSnapshotIndex()];
     }
 
-    function getLastSnapshotIndexOf(address mason) public view returns (uint256) {
-        return masons[mason].lastSnapshotIndex;
+    function getLastSnapshotIndexOf(address andras) public view returns (uint256) {
+        return demos[andras].lastSnapshotIndex;
     }
 
-    function getLastSnapshotOf(address mason) internal view returns (AcropolisSnapshot memory) {
-        return acropolisHistory[getLastSnapshotIndexOf(mason)];
+    function getLastSnapshotOf(address andras) internal view returns (AcropolisSnapshot memory) {
+        return acropolisHistory[getLastSnapshotIndexOf(andras)];
     }
 
-    function canWithdraw(address mason) external view returns (bool) {
-        return masons[mason].epochTimerStart.add(withdrawLockupEpochs) <= treasury.epoch();
+    function canWithdraw(address andras) external view returns (bool) {
+        return demos[andras].epochTimerStart.add(withdrawLockupEpochs) <= treasury.epoch();
     }
 
-    function canClaimReward(address mason) external view returns (bool) {
-        return masons[mason].epochTimerStart.add(rewardLockupEpochs) <= treasury.epoch();
+    function canClaimReward(address andras) external view returns (bool) {
+        return demos[andras].epochTimerStart.add(rewardLockupEpochs) <= treasury.epoch();
     }
 
     function epoch() external view returns (uint256) {
@@ -193,17 +193,17 @@ contract Acropolis is ShareWrapper, ContractGuard {
         return treasury.getBasedPrice();
     }
 
-    // =========== Mason getters
+    // =========== Andras getters =========== //
 
     function rewardPerShare() public view returns (uint256) {
         return getLatestSnapshot().rewardPerShare;
     }
 
-    function earned(address mason) public view returns (uint256) {
+    function earned(address andras) public view returns (uint256) {
         uint256 latestRPS = getLatestSnapshot().rewardPerShare;
-        uint256 storedRPS = getLastSnapshotOf(mason).rewardPerShare;
+        uint256 storedRPS = getLastSnapshotOf(andras).rewardPerShare;
 
-        return balanceOf(mason).mul(latestRPS.sub(storedRPS)).div(1e18).add(masons[mason].rewardEarned);
+        return balanceOf(andras).mul(latestRPS.sub(storedRPS)).div(1e18).add(demos[andras].rewardEarned);
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -211,13 +211,13 @@ contract Acropolis is ShareWrapper, ContractGuard {
     function stake(uint256 amount) public override onlyOneBlock updateReward(msg.sender) {
         require(amount > 0, "Acropolis: Cannot stake 0");
         super.stake(amount);
-        masons[msg.sender].epochTimerStart = treasury.epoch(); // reset timer
+        demos[msg.sender].epochTimerStart = treasury.epoch(); // reset timer
         emit Staked(msg.sender, amount);
     }
 
-    function withdraw(uint256 amount) public override onlyOneBlock masonExists updateReward(msg.sender) {
+    function withdraw(uint256 amount) public override onlyOneBlock andrasExists updateReward(msg.sender) {
         require(amount > 0, "Acropolis: Cannot withdraw 0");
-        require(masons[msg.sender].epochTimerStart.add(withdrawLockupEpochs) <= treasury.epoch(), "Acropolis: still in withdraw lockup");
+        require(demos[msg.sender].epochTimerStart.add(withdrawLockupEpochs) <= treasury.epoch(), "Acropolis: still in withdraw lockup");
         claimReward();
         super.withdraw(amount);
         emit Withdrawn(msg.sender, amount);
@@ -228,11 +228,11 @@ contract Acropolis is ShareWrapper, ContractGuard {
     }
 
     function claimReward() public updateReward(msg.sender) {
-        uint256 reward = masons[msg.sender].rewardEarned;
+        uint256 reward = demos[msg.sender].rewardEarned;
         if (reward > 0) {
-            require(masons[msg.sender].epochTimerStart.add(rewardLockupEpochs) <= treasury.epoch(), "Acropolis: still in reward lockup");
-            masons[msg.sender].epochTimerStart = treasury.epoch(); // reset timer
-            masons[msg.sender].rewardEarned = 0;
+            require(demos[msg.sender].epochTimerStart.add(rewardLockupEpochs) <= treasury.epoch(), "Acropolis: still in reward lockup");
+            demos[msg.sender].epochTimerStart = treasury.epoch(); // reset timer
+            demos[msg.sender].rewardEarned = 0;
             based.safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
