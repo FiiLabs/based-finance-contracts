@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./utils/ContractGuard.sol";
 import "./interfaces/IBasisAsset.sol";
 import "./interfaces/ITreasury.sol";
-
+//TODO Figure out why ShareWrapper included in the same file
 contract ShareWrapper {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -151,11 +151,12 @@ contract Acropolis is ShareWrapper, ContractGuard {
         require(_withdrawLockupEpochs >= _rewardLockupEpochs && _withdrawLockupEpochs <= 56, "_withdrawLockupEpochs: out of range"); // <= 2 week
         withdrawLockupEpochs = _withdrawLockupEpochs;
         rewardLockupEpochs = _rewardLockupEpochs;
+        //TODO may need to create event for function
     }
 
     /* ========== VIEW FUNCTIONS ========== */
 
-    // =========== Snapshot getters
+    // =========== Snapshot getters =========== //
 
     function latestSnapshotIndex() public view returns (uint256) {
         return acropolisHistory.length.sub(1);

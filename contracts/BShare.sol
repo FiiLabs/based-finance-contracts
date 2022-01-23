@@ -43,7 +43,7 @@ contract BShare is ERC20Burnable, Operator {
         address _communityFund,
         address _devFund
     ) ERC20("BSHARE", "BSHARE") {
-        _mint(msg.sender, 1 ether); // mint 1 BShare for initial pools deployment
+        _mint(msg.sender, 1000000 ether); // mint 1 BShare for initial pools deployment
 
         startTime = _startTime;
         endTime = startTime + VESTING_DURATION;

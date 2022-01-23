@@ -6,7 +6,12 @@ import  "dotenv/config";
 
 const config: HardhatUserConfig = {
   solidity: {
-    compilers: [{ version: "0.8.7", settings: {} }],
+    compilers: [{ version: "0.8.7", settings: {
+        optimizer: {
+          enabled: true,
+          runs: 50,
+        },
+      } }],
   },
 
   networks: {
@@ -15,14 +20,17 @@ const config: HardhatUserConfig = {
       accounts: [`${process.env.METAMASK_KEY}`]
     },
     rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.ALCHEMY_RINKEBY_API_KEY}`,
+      url: `https://rinkeby.infura.io/v3/${process.env.RINKEBY_API_KEY}`,
       accounts: [`${process.env.METAMASK_KEY}`]
     }
   },
   etherscan: {
     // Your API key for Etherscan
     // Obtain one at https://etherscan.io/
-    apiKey: `${process.env.ETHERSCAN_API_KEY}`
+    apiKey: {
+      ftmTestnet: process.env.FTMSCAN_API_KEY,
+      rinkeby: process.env.ETHERSCAN_API_KEY,
+    }
   },
 };
 
