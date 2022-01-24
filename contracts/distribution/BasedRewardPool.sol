@@ -30,7 +30,7 @@ contract BasedRewardPool {
         bool isStarted; // if lastRewardTime has passed
     }
 
-    IERC20 public based;
+    IERC20 public bshare;
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -57,9 +57,9 @@ contract BasedRewardPool {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event RewardPaid(address indexed user, uint256 amount);
 
-    constructor(address _based, uint256 _poolStartTime) {
+    constructor(address _bshare, uint256 _poolStartTime) {
         require(block.timestamp < _poolStartTime, "late");
-        if (_based != address(0)) based = IERC20(_based);
+        if (_bshare != address(0)) bshare = IERC20(_bshare);
 
         poolStartTime = _poolStartTime;
 

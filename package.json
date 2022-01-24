@@ -25,8 +25,8 @@
     "deploy-fantom": "npx hardhat run --network fantom scripts/deploy.ts",
     "verify-rinkeby": "npx hardhat verify --constructor-args scripts/verifyArgs.ts 0x4D06f72DdbA5EDaA240e5cc657553e89c2De7944 --network rinkeby",
     "build": "npm run compile",
-    "compile": "npx buidler compile",
-    "test": "npx buidler test"
+    "compile": "npx builder compile",
+    "test": "npx builder test"
   },
   "repository": {
     "type": "git",

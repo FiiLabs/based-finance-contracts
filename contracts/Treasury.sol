@@ -45,7 +45,7 @@ contract Treasury is ContractGuard {
     uint256 public epoch = 0;
     uint256 public epochSupplyContractionLeft = 0;
 
-    // exclusions from total supply
+    //=================================================================// exclusions from total supply
     address[] public excludedFromTotalSupply = [
         address(0x9A896d3c54D7e45B558BD5fFf26bF1E8C031F93b), // BasedGenesisPool
         address(0xa7b9123f4b15fE0fF01F469ff5Eab2b41296dC0E), // new BasedRewardPool
