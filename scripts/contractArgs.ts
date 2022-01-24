@@ -17,6 +17,7 @@ let contractArgsMap = new Map<string, any[]>([
     ['FtmLpRewardPool', [basedTokenAddr, poolStartTime]],
     ['FtmLpBshareRewardPool', [basedTokenAddr]],
     ['FTMRewardPool', [basedTokenAddr, poolStartTime]],
+    ['Greeter', ['Hello!']],
     ['GenesisRewardPool', [basedTokenAddr, poolStartTime]],
     ['Oracle', [pairAddr, 0, poolStartTime]],
     ['TokenRewardPool', [basedTokenAddr, poolStartTime]],
