@@ -47,9 +47,10 @@ contract Treasury is ContractGuard {
 
     //=================================================================// exclusions from total supply
     address[] public excludedFromTotalSupply = [
-        address(0x9A896d3c54D7e45B558BD5fFf26bF1E8C031F93b), // BasedGenesisPool    // WE NEED TO ALTER THESE ADDRESSES AFTER WE DEPLOY BASED, GENESIS ETC...
-        address(0xa7b9123f4b15fE0fF01F469ff5Eab2b41296dC0E), // new BasedRewardPool
-        address(0xA7B16703470055881e7EE093e9b0bF537f29CD4d) // old BasedRewardPool
+        address(0x9A896d3c54D7e45B558BD5fFf26bF1E8C031F93b),    // BasedGenesisPool
+                                                                // WE NEED TO ALTER THESE ADDRESSES AFTER WE DEPLOY BASED, GENESIS ETC...
+        address(0xa7b9123f4b15fE0fF01F469ff5Eab2b41296dC0E),    // new BasedRewardPool
+        address(0xA7B16703470055881e7EE093e9b0bF537f29CD4d)     // old BasedRewardPool
     ];
 
     // core components
@@ -307,7 +308,7 @@ contract Treasury is ContractGuard {
         require(_maxSupplyExpansionPercent >= 10 && _maxSupplyExpansionPercent <= 1000, "_maxSupplyExpansionPercent: out of range"); // [0.1%, 10%]
         maxSupplyExpansionPercent = _maxSupplyExpansionPercent;
     }
-            // =================================================================================ALTER THE NUMBERS IN LOGIC!!!!
+    // =================== ALTER THE NUMBERS IN LOGIC!!!! =================== //
     function setSupplyTiersEntry(uint8 _index, uint256 _value) external onlyOperator returns (bool) {
         require(_index >= 0, "Index has to be higher than 0");
         require(_index < 9, "Index has to be lower than count of tiers");
