@@ -47,7 +47,7 @@ contract Treasury is ContractGuard {
 
     //=================================================================// exclusions from total supply
     address[] public excludedFromTotalSupply = [
-        address(0x9A896d3c54D7e45B558BD5fFf26bF1E8C031F93b), // BasedGenesisPool
+        address(0x9A896d3c54D7e45B558BD5fFf26bF1E8C031F93b), // BasedGenesisPool    // WE NEED TO ALTER THESE ADDRESSES AFTER WE DEPLOY BASED, GENESIS ETC...
         address(0xa7b9123f4b15fE0fF01F469ff5Eab2b41296dC0E), // new BasedRewardPool
         address(0xA7B16703470055881e7EE093e9b0bF537f29CD4d) // old BasedRewardPool
     ];
@@ -90,6 +90,8 @@ contract Treasury is ContractGuard {
 
     address public daoFund;
     uint256 public daoFundSharedPercent;
+
+    //================================================================ ADD A WALLET FOR TEAM ALLOCATIONS (ADD 10 WALLETS FOR EACH MEMBER OF TEAM)
 
     address public devFund;
     uint256 public devFundSharedPercent;
@@ -259,10 +261,10 @@ contract Treasury is ContractGuard {
         basedPriceCeiling = basedPriceOne.mul(101).div(100);
 
         // Dynamic max expansion percent
-        supplyTiers = [0 ether, 500000 ether, 1000000 ether, 1500000 ether, 2000000 ether, 5000000 ether, 10000000 ether, 20000000 ether, 50000000 ether];
-        maxExpansionTiers = [450, 400, 350, 300, 250, 200, 150, 125, 100];
+        supplyTiers = [0 ether, 206000 ether, 386000 ether, 530000 ether, 1300000 ether, 5000000 ether, 10000000 ether];   // CHANGES TO EXPANSION RATES ETC...
+        maxExpansionTiers = [600, 500, 450, 400, 200, 100, 50];
 
-        maxSupplyExpansionPercent = 400; // Upto 4.0% supply for expansion
+        maxSupplyExpansionPercent = 600; // Upto 4.0% supply for expansion
 
         bondDepletionFloorPercent = 10000; // 100% of Bond supply for depletion floor
         seigniorageExpansionFloorPercent = 3500; // At least 35% of expansion reserved for acropolis
@@ -273,8 +275,8 @@ contract Treasury is ContractGuard {
         premiumPercent = 7000;
 
         // First 28 epochs with 4.5% expansion
-        bootstrapEpochs = 28;
-        bootstrapSupplyExpansionPercent = 450;
+        bootstrapEpochs = 28;                               // CHANGE TO VARIABLES TO HOLD EXPLANSION
+        bootstrapSupplyExpansionPercent = 600;   // IS IT GONNA KEEP PRINTING IF WE REACH 206K TOKENS BEFORE 28 EPOCHS....??????!!!!!!!!!!!!!!!!!
 
         // set seigniorageSaved to it's balance
         seigniorageSaved = IERC20(based).balanceOf(address(this));
@@ -305,7 +307,7 @@ contract Treasury is ContractGuard {
         require(_maxSupplyExpansionPercent >= 10 && _maxSupplyExpansionPercent <= 1000, "_maxSupplyExpansionPercent: out of range"); // [0.1%, 10%]
         maxSupplyExpansionPercent = _maxSupplyExpansionPercent;
     }
-
+            // =================================================================================ALTER THE NUMBERS IN LOGIC!!!!
     function setSupplyTiersEntry(uint8 _index, uint256 _value) external onlyOperator returns (bool) {
         require(_index >= 0, "Index has to be higher than 0");
         require(_index < 9, "Index has to be lower than count of tiers");
@@ -348,8 +350,12 @@ contract Treasury is ContractGuard {
         bootstrapEpochs = _bootstrapEpochs;
         bootstrapSupplyExpansionPercent = _bootstrapSupplyExpansionPercent;
     }
-
+//===============================================================================================================================================
     function setExtraFunds(
+        //================================================== ADD TEAM WALLETS W SHARED PERCENTAGE
+        // DAO WALLET - 10%
+        // DEV WALLET - 4.2%
+        // TEAM WALLET - 6.9%
         address _daoFund,
         uint256 _daoFundSharedPercent,
         address _devFund,
@@ -464,7 +470,7 @@ contract Treasury is ContractGuard {
 
         emit RedeemedBonds(msg.sender, _basedAmount, _bondAmount);
     }
-
+// ALTER THIS LOGTIC AND CHECK IF NUMBERS ALIGN
     function _sendToAcropolis(uint256 _amount) internal {
         IBasisAsset(based).mint(address(this), _amount);
 
@@ -541,6 +547,7 @@ contract Treasury is ContractGuard {
             }
         }
     }
+    //===================================================================================================================================
 
     function governanceRecoverUnsupported(
         IERC20 _token,
