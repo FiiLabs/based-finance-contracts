@@ -6,7 +6,7 @@
 import {ethers} from 'hardhat';
 import 'dotenv/config';
 const hre = require('hardhat');
-import contractArgsMap from './contractArgs';
+import {deployedContract, deployedContractArgs} from './contractArgs';
 
 async function main() {
     // Hardhat always runs the compile task when running scripts with its command
@@ -23,16 +23,12 @@ async function main() {
     const balance = await deployer.getBalance();
     console.log(`Account balance: ${balance.toString()}`);
 
-    const deployedContract: string = 'Greeter';
-    const deployNetwork: string = 'Rinkeby';
-    let deployedContractArgs: any = contractArgsMap.get(deployedContract);
-
     const Constract = await ethers.getContractFactory(deployedContract);
     const contract = await Constract.deploy(...deployedContractArgs);
     await contract.deployed();
     console.log(`Token address: ${contract.address}`);
 
-/*
+    /*
     // 3 sec wait
     await new Promise((resolve) => setTimeout(resolve, 3000));
 

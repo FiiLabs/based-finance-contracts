@@ -23,7 +23,7 @@
     "deploy": "npx hardhat run scripts/deploy.ts",
     "deploy-rinkeby": "npx hardhat run --network rinkeby scripts/deploy.ts",
     "deploy-fantom": "npx hardhat run --network fantom scripts/deploy.ts",
-    "verify-rinkeby": "npx hardhat verify --constructor-args scripts/verifyArgs.ts 0x4D06f72DdbA5EDaA240e5cc657553e89c2De7944 --network rinkeby",
+    "verify-rinkeby": "npx hardhat verify --constructor-args scripts/verifyArgs.ts 0xAFdD917fA99F44D5dfB6ab038bC25c40D56e8E84 --network rinkeby",
     "build": "npm run compile",
     "compile": "npx builder compile",
     "test": "npx builder test"

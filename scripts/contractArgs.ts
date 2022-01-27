@@ -6,9 +6,10 @@ let basedTokenAddr: string = '0x1252E3f03E0caa840cbb35442d817a1686A62586';
 let bShareTokenAddr: string = '0x3e4bf688aD2F24AAE7EE99f019A95d2Ac77f3c28';
 let treasuryAddr: string = '0xc4ec4d4A2CF16E9e4C473dAB6f12AD04D719098c';
 let devFundAddr: string = '0xf2D002BB00Ec16215902F3def7e9F20cE3C2332E';
-let pairAddr: string = '0x7f0fae34de2b34d13da640afc2273366919cd0b2';
+let pairAddr: string = '0x02135471B727c129A2EE8d7416732427849d6a69';
 let taxCollectorAddr: string = '0x1252E3f03E0caa840cbb35442d817a1686A62586';
-let poolStartTime: number = Math.round(Date.now() / 1000) + 100; // returns current time + 100s
+let poolStartTime: number = 1643317911;
+let period: number = 0;
 
 let contractArgsMap = new Map<string, any[]>([
     ['Acropolis', []],
@@ -19,7 +20,12 @@ let contractArgsMap = new Map<string, any[]>([
     ['FTMRewardPool', [basedTokenAddr, poolStartTime]],
     ['Greeter', ['Hello!']],
     ['GenesisRewardPool', [basedTokenAddr, poolStartTime]],
-    ['Oracle', [pairAddr, 0, poolStartTime]],
-    ['TokenRewardPool', [basedTokenAddr, poolStartTime]],
+    ['Oracle', [pairAddr, period, poolStartTime]],
+    ['BasedRewardPool', [basedTokenAddr, poolStartTime]],
+    ['Zap', [basedTokenAddr]],
 ]);
-export default contractArgsMap;
+
+const deployedContract: string = 'Zap';
+let deployedContractArgs: any = contractArgsMap.get(deployedContract);
+
+export {deployedContract, deployedContractArgs};
