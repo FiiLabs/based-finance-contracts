@@ -26,8 +26,8 @@ async function main() {
     console.log(`Account balance: ${balance.toString()}`);
 
     // Set contract name and get appropriate args
-    let deployedContract: string = 'TaxOffice';
-    let deployNetwork: string = 'Rinkeby';
+    let deployedContract: string = 'Greeter';
+    let deployNetwork: string = 'Fantom';
     deployedContractArgs = contractArgsMap.get(deployedContract);
 
     const Constract = await ethers.getContractFactory(deployedContract);
@@ -35,9 +35,10 @@ async function main() {
     await contract.deployed();
     console.log(`Token address: ${contract.address}`);
 
-    // 3 sec wait
-    let timeFrame: number = 50000;
-    console.log(`\n Wating ${timeFrame / 1000} sec before verification`);
+    // 50 sec wait
+    let timeFrame: number = 30000;
+    console.log(`\n==================================================`);
+    console.log(`Wating ${timeFrame / 1000} sec before verification`);
     await new Promise((resolve) => setTimeout(resolve, timeFrame));
 
     // Verify contract

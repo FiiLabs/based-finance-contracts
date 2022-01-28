@@ -21,7 +21,8 @@ const config: HardhatUserConfig = {
 
     networks: {
         fantom: {
-            url: 'https://rpc.testnet.fantom.network/',
+            //url: 'https://rpc.testnet.fantom.network/',
+            url: 'https://rpcapi.fantom.network',
             accounts: [`${process.env.METAMASK_KEY}`],
         },
         rinkeby: {
@@ -33,7 +34,7 @@ const config: HardhatUserConfig = {
         // Your API key for Etherscan
         // Obtain one at https://etherscan.io/
         apiKey: {
-            ftmTestnet: process.env.FTMSCAN_API_KEY,
+            opera: process.env.FTMSCAN_API_KEY,
             rinkeby: process.env.ETHERSCAN_API_KEY,
         },
     },
