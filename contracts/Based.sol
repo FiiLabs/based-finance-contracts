@@ -22,10 +22,11 @@ contract Based is ERC20Burnable, Operator {
     using SafeMath for uint256;
 
     // Initial distribution for the first 24h genesis pools
-    uint256 public constant INITIAL_GENESIS_POOL_DISTRIBUTION = 6850 ether;  // total of based we pay to users during genesis
+    uint256 public constant INITIAL_GENESIS_POOL_DISTRIBUTION = 32000 ether;
+    // total of based we pay to users during genesis
     // Initial distribution for the day 2-5 BASED-TOMB LP -> BASED pool
     // WE WANT THIS POOL TO RUN SAME AMOUNT OF TIME AS GENESIS REWARD POOL....
-    uint256 public constant INITIAL_BASED_POOL_DISTRIBUTION = 33600 ether; // native lp pool that pays in based to users
+    uint256 public constant INITIAL_TREASURY_DISTRIBUTION = 1000 ether; // native lp pool that pays in based to users
     // Distribution for airdrops wallet
     // uint256 public constant INITIAL_AIRDROP_WALLET_DISTRIBUTION = 9000 ether;
 
@@ -70,14 +71,14 @@ contract Based is ERC20Burnable, Operator {
     /**
      * @notice Constructs the BASED ERC-20 contract.
      */
-    constructor(uint256 _taxRate, address _taxCollectorAddress) ERC20("BASED", "BASED") {
+    constructor(uint256 _taxRate, address _taxCollectorAddress) ERC20("tBASED", "tBSD") {
         // Mints 1 BASED to contract creator for initial pool setup
         require(_taxRate < 10000, "tax equal or bigger to 100%");
         require(_taxCollectorAddress != address(0), "tax collector address must be non-zero address");
 
         excludeAddress(address(this));
 
-        _mint(msg.sender, 9500 ether);    // WE MINT 9500 BASED RIGHT AWAY FOR INITIAL LP CREATION
+        _mint(msg.sender, 5000 ether);    // WE MINT 5000 BASED RIGHT AWAY FOR INITIAL LP CREATION
         taxRate = _taxRate;
         taxCollectorAddress = _taxCollectorAddress;
     }
@@ -262,16 +263,16 @@ contract Based is ERC20Burnable, Operator {
      */
     function distributeReward(
         address _genesisPool,
-        address _basedPool
+        address _treasury
         // address _airdropWallet
     ) external onlyOperator {
         require(!rewardPoolDistributed, "only can distribute once");
         require(_genesisPool != address(0), "!_genesisPool");
-        require(_basedPool != address(0), "!_basedPool");
+        require(_treasury != address(0), "!_treasury");
         // require(_airdropWallet != address(0), "!_airdropWallet");
         rewardPoolDistributed = true;
         _mint(_genesisPool, INITIAL_GENESIS_POOL_DISTRIBUTION);
-        _mint(_basedPool, INITIAL_BASED_POOL_DISTRIBUTION);
+        _mint(_basedPool, INITIAL_TREASURY_DISTRIBUTION);
         // _mint(_airdropWallet, INITIAL_AIRDROP_WALLET_DISTRIBUTION);
     }
 
