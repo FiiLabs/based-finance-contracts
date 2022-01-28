@@ -5,8 +5,10 @@
 // Runtime Environment's members available in the global scope.
 import {ethers} from 'hardhat';
 import 'dotenv/config';
+
 const hre = require('hardhat');
-import {deployedContract, deployedContractArgs} from './contractArgs';
+let deployedContractArgs: any;
+import {contractArgsMap} from './contractArgs';
 
 async function main() {
     // Hardhat always runs the compile task when running scripts with its command
@@ -23,26 +25,31 @@ async function main() {
     const balance = await deployer.getBalance();
     console.log(`Account balance: ${balance.toString()}`);
 
+    // Set contract name and get appropriate args
+    let deployedContract: string = 'TaxOffice';
+    let deployNetwork: string = 'Rinkeby';
+    deployedContractArgs = contractArgsMap.get(deployedContract);
+
     const Constract = await ethers.getContractFactory(deployedContract);
     const contract = await Constract.deploy(...deployedContractArgs);
     await contract.deployed();
     console.log(`Token address: ${contract.address}`);
 
-    /*
     // 3 sec wait
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    let timeFrame: number = 50000;
+    console.log(`\n Wating ${timeFrame / 1000} sec before verification`);
+    await new Promise((resolve) => setTimeout(resolve, timeFrame));
 
     // Verify contract
     await hre.run('verify:verify', {
         address: contract.address,
         constructorArguments: [...deployedContractArgs],
         network: deployNetwork,
-        apiKey: {
+        /*apiKey: {
             ftmTestnet: process.env.FTMSCAN_API_KEY,
             rinkeby: process.env.ETHERSCAN_API_KEY,
-        },
+        },*/
     });
-*/
 }
 
 // We recommend this pattern to be able to use async/await everywhere
@@ -51,3 +58,5 @@ main().catch((error) => {
     console.error(error);
     process.exitCode = 1;
 });
+
+export {deployedContractArgs};

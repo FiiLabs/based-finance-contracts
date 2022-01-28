@@ -23,9 +23,7 @@ let contractArgsMap = new Map<string, any[]>([
     ['Oracle', [pairAddr, period, poolStartTime]],
     ['BasedRewardPool', [basedTokenAddr, poolStartTime]],
     ['Zap', [basedTokenAddr]],
+    ['TaxOffice', ['0x5556B03e542EE4f515ba1A15d9640f0C97AdDe12']],
 ]);
 
-const deployedContract: string = 'Zap';
-let deployedContractArgs: any = contractArgsMap.get(deployedContract);
-
-export {deployedContract, deployedContractArgs};
+export {contractArgsMap};
