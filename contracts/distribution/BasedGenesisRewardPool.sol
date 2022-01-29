@@ -48,6 +48,9 @@ contract BasedGenesisRewardPool {
     // The time when BASED mining ends.
     uint256 public poolEndTime;
 
+    // Treasury address for taxation
+    address public treasuryAddress;
+
     // TESTNET
     uint256 public basedPerSecond = 3.0555555 ether; // 11000 BASED / (1h * 60min * 60s)
     uint256 public runningTime = 24 hours; // 1 hours
@@ -67,12 +70,14 @@ contract BasedGenesisRewardPool {
 
     constructor(
         address _based,
+        address _treasury,
         // address _nonNativeToken,
         uint256 _poolStartTime
     ) {
         require(block.timestamp < _poolStartTime, "late");
         if (_based != address(0)) based = IERC20(_based);
         // if (_nonNativeToken != address(0)) nonNativeToken = _nonNativeToken;
+        if (_treasury != address(0)) treasuryAddress = _treasury;
         poolStartTime = _poolStartTime;
         poolEndTime = poolStartTime + runningTime;
         operator = msg.sender;
