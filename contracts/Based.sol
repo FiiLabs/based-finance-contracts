@@ -71,7 +71,7 @@ contract Based is ERC20Burnable, Operator {
     /**
      * @notice Constructs the BASED ERC-20 contract.
      */
-    constructor(uint256 _taxRate, address _taxCollectorAddress) ERC20("tBASED", "tBSD") {
+    constructor(uint256 _taxRate, address _taxCollectorAddress) ERC20("tBASED", "tBASED") {
         // Mints 1 BASED to contract creator for initial pool setup
         require(_taxRate < 10000, "tax equal or bigger to 100%");
         require(_taxCollectorAddress != address(0), "tax collector address must be non-zero address");
@@ -272,7 +272,7 @@ contract Based is ERC20Burnable, Operator {
         // require(_airdropWallet != address(0), "!_airdropWallet");
         rewardPoolDistributed = true;
         _mint(_genesisPool, INITIAL_GENESIS_POOL_DISTRIBUTION);
-        _mint(_basedPool, INITIAL_TREASURY_DISTRIBUTION);
+        _mint(_treasury, INITIAL_TREASURY_DISTRIBUTION);
         // _mint(_airdropWallet, INITIAL_AIRDROP_WALLET_DISTRIBUTION);
     }
 
