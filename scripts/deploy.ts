@@ -26,7 +26,7 @@ async function main() {
     console.log(`Account balance: ${balance.toString()}`);
 
     // Set contract name and get appropriate args
-    let deployedContract: string = 'BasedGenesisRewardPool';
+    let deployedContract: string = 'NNTestToken';
     let deployNetwork: string = 'Fantom';
     deployedContractArgs = contractArgsMap.get(deployedContract);
 
