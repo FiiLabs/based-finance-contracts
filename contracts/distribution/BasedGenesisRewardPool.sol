@@ -18,7 +18,7 @@ contract BasedGenesisRewardPool {
     // Info of each user.
     struct UserInfo {
         uint256 amount; // How many tokens the user has provided.
-        // uint256 depositDebt; // Deposit debt. See explanation below.
+        uint256 rewardDebt; // Deposit debt. See explanation below.
     }
 
     // Info of each pool.
@@ -48,11 +48,10 @@ contract BasedGenesisRewardPool {
     // The time when BASED mining ends.
     uint256 public poolEndTime;
 
-    // Treasury address for taxation
     address public treasuryAddress;
 
     // TESTNET
-    uint256 public basedPerSecond = 0.37 ether; // 32000 BASED / (1h * 60min * 60s)
+    uint256 public basedPerSecond = 0.370370 ether; // 32000 BASED / (1h * 60min * 60s)
     uint256 public runningTime = 24 hours; // 1 hours
     uint256 public constant TOTAL_REWARDS = 32000 ether;
     // END TESTNET
@@ -173,7 +172,7 @@ contract BasedGenesisRewardPool {
             uint256 _basedReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
             accBasedPerShare = accBasedPerShare.add(_basedReward.mul(1e18).div(tokenSupply));
         }
-        return user.amount.mul(accBasedPerShare).div(1e18);
+        return user.amount.mul(accBasedPerShare).div(1e18).sub(user.rewardDebt);
     }
 
     // Update reward variables for all pools. Be careful of gas spending!
@@ -215,7 +214,7 @@ contract BasedGenesisRewardPool {
         updatePool(_pid);
         if (user.amount > 0) {
             // transfer rewards to user if any pending rewards
-            uint256 _pending = user.amount.mul(pool.accBasedPerShare).div(1e18);
+            uint256 _pending = user.amount.mul(pool.accBasedPerShare).div(1e18).sub(user.rewardDebt);
             if (_pending > 0) {
                 // send pending reward to user, if rewards accumulating in _pending
                 safeBasedTransfer(_sender, _pending);
@@ -231,7 +230,7 @@ contract BasedGenesisRewardPool {
             pool.token.safeTransfer(treasuryAddress, depositDebt);
 
         }
-
+        user.rewardDebt = user.amount.mul(pool.accBasedPerShare).div(1e18);
         emit Deposit(_sender, _pid, _amount);
     }
 
@@ -242,7 +241,7 @@ contract BasedGenesisRewardPool {
         UserInfo storage user = userInfo[_pid][_sender];
         require(user.amount >= _amount, "withdraw: not good");
         updatePool(_pid);
-        uint256 _pending = user.amount.mul(pool.accBasedPerShare).div(1e18);
+        uint256 _pending = user.amount.mul(pool.accBasedPerShare).div(1e18).sub(user.rewardDebt);
         if (_pending > 0) {
             safeBasedTransfer(_sender, _pending);
             emit RewardPaid(_sender, _pending);
@@ -252,7 +251,7 @@ contract BasedGenesisRewardPool {
             pool.token.safeTransfer(_sender, _amount);
 
         }
-
+        user.rewardDebt = user.amount.mul(pool.accBasedPerShare).div(1e18);
         emit Withdraw(_sender, _pid, _amount);
     }
 
@@ -262,6 +261,7 @@ contract BasedGenesisRewardPool {
         UserInfo storage user = userInfo[_pid][msg.sender];
         uint256 _amount = user.amount;
         user.amount = 0;
+        user.rewardDebt = 0;
         pool.token.safeTransfer(msg.sender, _amount);
         emit EmergencyWithdraw(msg.sender, _pid, _amount);
     }
@@ -283,7 +283,7 @@ contract BasedGenesisRewardPool {
     }
 
     function governanceRecoverUnsupported(IERC20 _token, uint256 amount, address to) external onlyOperator {
-        if (block.timestamp < poolEndTime + 90 days) {
+        if (block.timestamp < poolEndTime + 3 days) {
             // do not allow to drain core token (BASED or lps) if less than 90 days after pool ends
             require(_token != based, "based");
             uint256 length = poolInfo.length;
