@@ -48,10 +48,10 @@ contract BShareRewardPool {
 
     // The time when bSHARE mining ends.
     uint256 public poolEndTime;
-        // WE WANNA EMIT 300 BSHARE/DAY
-        // RECALCULATE HOW MUCH IT PAYS PER SECOND TO MATCH OUR TOTAL BSHARE AMOUNT
-    uint256 public bSharePerSecond = 0.00186122 ether; // 50000 bshare / (370 days * 24h * 60min * 60s)
-    uint256 public runningTime = 370 days; // 370 days  // RECALCULATE THE RUNNING TIME OF THIS POOL AS WELL
+    // WE WANNA EMIT 300 BSHARE/DAY
+    // RECALCULATE HOW MUCH IT PAYS PER SECOND TO MATCH OUR TOTAL BSHARE AMOUNT
+    uint256 public bSharePerSecond = 0.003486 ether; // 50000 bshare / (365 days * 24h * 60min * 60s)
+    uint256 public runningTime = 166 days; // 166 days  // RECALCULATE THE RUNNING TIME OF THIS POOL AS WELL
     uint256 public constant TOTAL_REWARDS = 50000 ether;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -60,7 +60,7 @@ contract BShareRewardPool {
     event RewardPaid(address indexed user, uint256 amount);
 
     constructor(address _bshare, uint256 _poolStartTime) {
-        require(block.timestamp < _poolStartTime, "late");
+        require(block.timestamp < _poolStartTime, "pool cant be started in the past");
         if (_bshare != address(0)) bshare = IERC20(_bshare);
         poolStartTime = _poolStartTime;
         poolEndTime = poolStartTime + runningTime;
