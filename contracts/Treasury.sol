@@ -29,8 +29,11 @@ contract Treasury is ContractGuard {
     using SafeMath for uint256;
 
     /* ========= CONSTANT VARIABLES ======== */
+    //TODO don't forget to switch
+    //Deployment
+    //uint256 public constant PERIOD = 6 hours;
 
-    uint256 public constant PERIOD = 6 hours;
+    uint256 public constant PERIOD = 1 hours;
 
     /* ========== STATE VARIABLES ========== */
 
@@ -47,10 +50,8 @@ contract Treasury is ContractGuard {
 
     //=================================================================// exclusions from total supply
     address[] public excludedFromTotalSupply = [
-        address(0x9A896d3c54D7e45B558BD5fFf26bF1E8C031F93b),    // BasedGenesisPool
-                                                                // WE NEED TO ALTER THESE ADDRESSES AFTER WE DEPLOY BASED, GENESIS ETC...
-        address(0xa7b9123f4b15fE0fF01F469ff5Eab2b41296dC0E),    // new BasedRewardPool
-        address(0xA7B16703470055881e7EE093e9b0bF537f29CD4d)     // old BasedRewardPool
+    //TODO change this address to our genesis pool
+    address(0x50a979c4097C68BCB4D65d9793A56499aBe06ebB)    // BasedGenesisPool
     ];
 
     // core components
@@ -76,7 +77,7 @@ contract Treasury is ContractGuard {
     uint256 public maxSupplyContractionPercent;
     uint256 public maxDebtRatioPercent;
 
-    // 28 first epochs (1 week) with 4.5% expansion regardless of BASED price
+    // 14 first epochs (0.5 week) with 4.5% expansion regardless of BASED price
     uint256 public bootstrapEpochs;
     uint256 public bootstrapSupplyExpansionPercent;
 
@@ -276,7 +277,7 @@ contract Treasury is ContractGuard {
         premiumPercent = 7000;
 
         // First 28 epochs with 4.5% expansion
-        bootstrapEpochs = 28;                               // CHANGE TO VARIABLES TO HOLD EXPLANSION
+        bootstrapEpochs = 14;  // CHANGE TO VARIABLES TO HOLD EXPLANSION
         bootstrapSupplyExpansionPercent = 600;   // IS IT GONNA KEEP PRINTING IF WE REACH 206K TOKENS BEFORE 28 EPOCHS....??????!!!!!!!!!!!!!!!!!
 
         // set seigniorageSaved to it's balance
@@ -311,11 +312,11 @@ contract Treasury is ContractGuard {
     // =================== ALTER THE NUMBERS IN LOGIC!!!! =================== //
     function setSupplyTiersEntry(uint8 _index, uint256 _value) external onlyOperator returns (bool) {
         require(_index >= 0, "Index has to be higher than 0");
-        require(_index < 9, "Index has to be lower than count of tiers");
+        require(_index <7, "Index has to be lower than count of tiers");
         if (_index > 0) {
             require(_value > supplyTiers[_index - 1]);
         }
-        if (_index < 8) {
+        if (_index < 6) {
             require(_value < supplyTiers[_index + 1]);
         }
         supplyTiers[_index] = _value;
@@ -324,7 +325,7 @@ contract Treasury is ContractGuard {
 
     function setMaxExpansionTiersEntry(uint8 _index, uint256 _value) external onlyOperator returns (bool) {
         require(_index >= 0, "Index has to be higher than 0");
-        require(_index < 9, "Index has to be lower than count of tiers");
+        require(_index < 7, "Index has to be lower than count of tiers");
         require(_value >= 10 && _value <= 1000, "_value: out of range"); // [0.1%, 10%]
         maxExpansionTiers[_index] = _value;
         return true;
@@ -354,16 +355,16 @@ contract Treasury is ContractGuard {
 //===============================================================================================================================================
     function setExtraFunds(
         //================================================== ADD TEAM WALLETS W SHARED PERCENTAGE
-        // DAO WALLET - 10%
-        // DEV WALLET - 4.2%
-        // TEAM WALLET - 6.9%
+        // DAO WALLET - 12%
+        // DEV WALLET - 3%
+        // TEAM WALLET - 5%
         address _daoFund,
         uint256 _daoFundSharedPercent,
         address _devFund,
         uint256 _devFundSharedPercent
     ) external onlyOperator {
         require(_daoFund != address(0), "zero");
-        require(_daoFundSharedPercent <= 3000, "out of range"); // <= 30%
+        require(_daoFundSharedPercent <= 1500, "out of range"); // <= 15%
         require(_devFund != address(0), "zero");
         require(_devFundSharedPercent <= 1000, "out of range"); // <= 10%
         daoFund = _daoFund;
@@ -498,7 +499,7 @@ contract Treasury is ContractGuard {
     }
 
     function _calculateMaxSupplyExpansionPercent(uint256 _basedSupply) internal returns (uint256) {
-        for (uint8 tierId = 8; tierId >= 0; --tierId) {
+        for (uint8 tierId = 6; tierId >= 0; --tierId) {
             if (_basedSupply >= supplyTiers[tierId]) {
                 maxSupplyExpansionPercent = maxExpansionTiers[tierId];
                 break;

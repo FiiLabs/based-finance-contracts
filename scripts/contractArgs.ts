@@ -19,6 +19,8 @@ let taxRate: number = 0;
 let contractArgsMap = new Map<string, any[]>([
     ['Acropolis', []],
     ['Based', [taxRate, taxCollectorAddr]],
+    ['BasedTombZap', [bShareTokenAddr]],
+    ['contracts/BShareFtmZap.sol:BShareFtmZap', [basedTokenAddr]],
     ['BShare', []],
     ['BBond', []],
     ['Treasury', []],
@@ -34,11 +36,7 @@ let contractArgsMap = new Map<string, any[]>([
     ['NNTestToken', ['TEAMTOK', 'TEAMTOK']],
     ['Greeter', ['HOLA!']],
     ['BasedRewardPool', [basedTokenAddr, poolStartTime]],
-    [
-        'BShareSwapper',
-        [basedTokenAddr, bBondTokenAddr, bShareTokenAddr, FTMTokenAddr, basedTombLPPairAddrs, bShareFTMLPPairAddrs, treasuryAddr /*Phills address*/],
-    ],
-    ['Zap', []],
+    ['BShareSwapper', [basedTokenAddr, bBondTokenAddr, bShareTokenAddr, FTMTokenAddr, basedTombLPPairAddrs, bShareFTMLPPairAddrs, treasuryAddr]],
 ]);
 
 export {contractArgsMap};

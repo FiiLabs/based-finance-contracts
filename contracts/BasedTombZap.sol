@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IHyperswapRouter01.sol";
 import "./interfaces/IUniswapV2Pair.sol";
-import "./interfaces/IUniswapV2Router01.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/IUniswapV2Router.sol";
 import "./interfaces/IVault.sol";
+import "./lib/TransferHelper.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./lib/TransferHelper.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -27,6 +27,7 @@ contract BasedTombZap is Ownable {
 
     mapping (address => bool) public useNativeRouter;
 
+    // BShare address
     constructor(address _NATIVE) Ownable() {
         NATIVE = _NATIVE;
     }
@@ -56,7 +57,6 @@ contract BasedTombZap is Ownable {
             address other = _from == IUniswapV2Pair(_to).token0() ? IUniswapV2Pair(_to).token1() : IUniswapV2Pair(_to).token0();
             // calculate amount of _from to sell
             uint256 sellAmount = _amt.div(2);
-            //
             // calculate amount of other token for potential lp
             uint256 otherAmount = _estimateSwap(_from, sellAmount, other, _router);
             if (_from == IUniswapV2Pair(_to).token0()) {

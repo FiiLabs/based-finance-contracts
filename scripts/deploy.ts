@@ -26,8 +26,8 @@ async function main() {
     console.log(`Account balance: ${balance.toString()}`);
 
     // Set contract name and get appropriate args
-    let deployedContract: string = 'NNTestToken';
-    let deployNetwork: string = 'Fantom';
+    let deployedContract: string = 'Treasury';
+    let deployNetwork: string = 'fantom';
     deployedContractArgs = contractArgsMap.get(deployedContract);
 
     const Constract = await ethers.getContractFactory(deployedContract);
