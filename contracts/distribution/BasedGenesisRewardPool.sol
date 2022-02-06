@@ -31,12 +31,12 @@ contract BasedGenesisRewardPool {
     }
 
     IERC20 public based;
-    // address public nonNativeToken;
+
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
 
-    // Info of each user that stakes LP tokens.
+    // Info of each user that stakes tokens.
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
 
     // Total allocation points. Must be the sum of all allocation points in all pools.
@@ -48,19 +48,13 @@ contract BasedGenesisRewardPool {
     // The time when BASED mining ends.
     uint256 public poolEndTime;
 
-    address public treasuryAddress;
+    address public daoFundAddress;
 
-    // TESTNET
-    uint256 public basedPerSecond = 0.370370 ether; // 32000 BASED / (1h * 60min * 60s)
-    uint256 public runningTime = 24 hours; // 1 hours
-    uint256 public constant TOTAL_REWARDS = 32000 ether;
-    // END TESTNET
 
-    // MAINNET
-    // uint256 public basedPerSecond = 0.11574 ether; // 10000 BASED / (24h * 60min * 60s)
-    // uint256 public runningTime = 1 days; // 1 days
-    // uint256 public constant TOTAL_REWARDS = 10000 ether;
-    // END MAINNET
+    uint256 public basedPerSecond = 0.159143 ether; // 27500 BASED / (48h * 60min * 60s)
+    uint256 public runningTime = 48 hours;
+    uint256 public constant TOTAL_REWARDS = 27500 ether;
+
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
@@ -69,17 +63,17 @@ contract BasedGenesisRewardPool {
 
     constructor(
         address _based,
-        address _treasury,
-        // address _nonNativeToken,
+        address _daoFund,
         uint256 _poolStartTime
     ) {
         require(block.timestamp < _poolStartTime, "late");
         if (_based != address(0)) based = IERC20(_based);
-        // if (_nonNativeToken != address(0)) nonNativeToken = _nonNativeToken;
-        if (_treasury != address(0)) treasuryAddress = _treasury;
+        if (_daoFund != address(0)) daoFundAddress = _daoFund;
+
         poolStartTime = _poolStartTime;
         poolEndTime = poolStartTime + runningTime;
         operator = msg.sender;
+
     }
 
     modifier onlyOperator() {
@@ -94,7 +88,9 @@ contract BasedGenesisRewardPool {
         }
     }
 
-    // Add a new token to the pool. Can only be called by the owner.
+    // Add a new pool. Can only be called by the owner.
+    // @ _allocPoint - amount of based this pool will emit
+    // @ _token - token that can be deposited into this pool
     function add(
         uint256 _allocPoint,
         IERC20 _token,
@@ -124,12 +120,12 @@ contract BasedGenesisRewardPool {
         (_lastRewardTime <= poolStartTime) ||
         (_lastRewardTime <= block.timestamp);
         poolInfo.push(PoolInfo({
-            token : _token,
-            allocPoint : _allocPoint,
-            lastRewardTime : _lastRewardTime,
-            accBasedPerShare : 0,
-            isStarted : _isStarted
-            }));
+        token : _token,
+        allocPoint : _allocPoint,
+        lastRewardTime : _lastRewardTime,
+        accBasedPerShare : 0,
+        isStarted : _isStarted
+        }));
         if (_isStarted) {
             totalAllocPoint = totalAllocPoint.add(_allocPoint);
         }
@@ -206,7 +202,8 @@ contract BasedGenesisRewardPool {
         pool.lastRewardTime = block.timestamp;
     }
 
-    // Deposit LP tokens.
+    // Deposit tokens.
+
     function deposit(uint256 _pid, uint256 _amount) public {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
@@ -224,17 +221,14 @@ contract BasedGenesisRewardPool {
         if (_amount > 0) {
             pool.token.safeTransferFrom(_sender, address(this), _amount);
             uint256 depositDebt = _amount.mul(50).div(10000);
-
             user.amount = user.amount.add(_amount.sub(depositDebt));
-
-            pool.token.safeTransfer(treasuryAddress, depositDebt);
-
+            pool.token.safeTransfer(daoFundAddress, depositDebt);
         }
         user.rewardDebt = user.amount.mul(pool.accBasedPerShare).div(1e18);
         emit Deposit(_sender, _pid, _amount);
     }
 
-    // Withdraw LP tokens.
+    // Withdraw tokens.
     function withdraw(uint256 _pid, uint256 _amount) public {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
@@ -266,7 +260,7 @@ contract BasedGenesisRewardPool {
         emit EmergencyWithdraw(msg.sender, _pid, _amount);
     }
 
-    // Safe BASED transfer function, just in case if rounding error causes pool to not have enough BASEDs.
+    // Safe BASED transfer function, in case if rounding error causes pool to not have enough BASEDs.
     function safeBasedTransfer(address _to, uint256 _amount) internal {
         uint256 _basedBalance = based.balanceOf(address(this));
         if (_basedBalance > 0) {
@@ -284,7 +278,7 @@ contract BasedGenesisRewardPool {
 
     function governanceRecoverUnsupported(IERC20 _token, uint256 amount, address to) external onlyOperator {
         if (block.timestamp < poolEndTime + 3 days) {
-            // do not allow to drain core token (BASED or lps) if less than 90 days after pool ends
+            // do not allow to drain core token (BASED or lps) if less than 3 days after pool ends
             require(_token != based, "based");
             uint256 length = poolInfo.length;
             for (uint256 pid = 0; pid < length; ++pid) {
