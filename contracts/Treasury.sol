@@ -29,11 +29,8 @@ contract Treasury is ContractGuard {
     using SafeMath for uint256;
 
     /* ========= CONSTANT VARIABLES ======== */
-    //TODO don't forget to switch
-    //Deployment
-    //uint256 public constant PERIOD = 6 hours;
 
-    uint256 public constant PERIOD = 1 hours;
+    uint256 public constant PERIOD = 6 hours;
 
     /* ========== STATE VARIABLES ========== */
 
@@ -50,8 +47,7 @@ contract Treasury is ContractGuard {
 
     //=================================================================// exclusions from total supply
     address[] public excludedFromTotalSupply = [
-    //TODO change this address to our genesis pool
-    address(0x50a979c4097C68BCB4D65d9793A56499aBe06ebB)    // BasedGenesisPool
+        address(0x9Ec66B9409d4cD8D4a4C90950Ff0fd26bB39ad84)    // BasedGenesisPool
     ];
 
     // core components
@@ -84,7 +80,7 @@ contract Treasury is ContractGuard {
     /* =================== Added variables =================== */
     uint256 public previousEpochBasedPrice;
     uint256 public maxDiscountRate; // when purchasing bond
-    uint256 public maxPremiumRate; // when redeeming bond
+    uint256 public maxPremiumRate;  // when redeeming bond
     uint256 public discountPercent;
     uint256 public premiumThreshold;
     uint256 public premiumPercent;
@@ -93,10 +89,12 @@ contract Treasury is ContractGuard {
     address public daoFund;
     uint256 public daoFundSharedPercent;
 
-    //================================================================ ADD A WALLET FOR TEAM ALLOCATIONS (ADD 10 WALLETS FOR EACH MEMBER OF TEAM)
+    //=================================================//
 
     address public devFund;
     uint256 public devFundSharedPercent;
+    address public teamFund;
+    uint256 public teamFundSharedPercent;
 
     /* =================== Events =================== */
 
@@ -108,6 +106,7 @@ contract Treasury is ContractGuard {
     event AcropolisFunded(uint256 timestamp, uint256 seigniorage);
     event DaoFundFunded(uint256 timestamp, uint256 seigniorage);
     event DevFundFunded(uint256 timestamp, uint256 seigniorage);
+    event TeamFundFunded(uint256 timestamp, uint256 seigniorage);
 
     /* =================== Modifier =================== */
 
@@ -133,7 +132,7 @@ contract Treasury is ContractGuard {
 
     modifier checkOperator {
         require(
-            IBasisAsset(based).operator() == address(this) &&
+                IBasisAsset(based).operator() == address(this) &&
                 IBasisAsset(bbond).operator() == address(this) &&
                 IBasisAsset(bshare).operator() == address(this) &&
                 Operator(acropolis).operator() == address(this),
@@ -263,7 +262,7 @@ contract Treasury is ContractGuard {
         basedPriceCeiling = basedPriceOne.mul(101).div(100);
 
         // Dynamic max expansion percent
-        supplyTiers = [0 ether, 206000 ether, 386000 ether, 530000 ether, 1300000 ether, 5000000 ether, 10000000 ether];   // CHANGES TO EXPANSION RATES ETC...
+        supplyTiers = [0 ether, 206000 ether, 386000 ether, 530000 ether, 1300000 ether, 5000000 ether, 10000000 ether];
         maxExpansionTiers = [600, 500, 450, 400, 200, 100, 50];
 
         maxSupplyExpansionPercent = 600; // Upto 4.0% supply for expansion
@@ -277,8 +276,8 @@ contract Treasury is ContractGuard {
         premiumPercent = 7000;
 
         // First 28 epochs with 4.5% expansion
-        bootstrapEpochs = 14;  // CHANGE TO VARIABLES TO HOLD EXPLANSION
-        bootstrapSupplyExpansionPercent = 600;   // IS IT GONNA KEEP PRINTING IF WE REACH 206K TOKENS BEFORE 28 EPOCHS....??????!!!!!!!!!!!!!!!!!
+        bootstrapEpochs = 14;
+        bootstrapSupplyExpansionPercent = 600;
 
         // set seigniorageSaved to it's balance
         seigniorageSaved = IERC20(based).balanceOf(address(this));
@@ -354,23 +353,29 @@ contract Treasury is ContractGuard {
     }
 //===============================================================================================================================================
     function setExtraFunds(
-        //================================================== ADD TEAM WALLETS W SHARED PERCENTAGE
-        // DAO WALLET - 12%
-        // DEV WALLET - 3%
+        // DAO FUND - 12%
+        // DEVS WALLET - 3%
         // TEAM WALLET - 5%
         address _daoFund,
         uint256 _daoFundSharedPercent,
         address _devFund,
-        uint256 _devFundSharedPercent
+        uint256 _devFundSharedPercent,
+        address _teamFund,
+        uint256 _teamFundSharedPercent
     ) external onlyOperator {
         require(_daoFund != address(0), "zero");
         require(_daoFundSharedPercent <= 1500, "out of range"); // <= 15%
         require(_devFund != address(0), "zero");
-        require(_devFundSharedPercent <= 1000, "out of range"); // <= 10%
+        require(_devFundSharedPercent <= 350, "out of range"); // <= 3.5%
+        require(_teamFund != address(0), "zero");
+        require(_teamFundSharedPercent <= 550, "out of range"); // <= 5.5%
+
         daoFund = _daoFund;
         daoFundSharedPercent = _daoFundSharedPercent;
         devFund = _devFund;
         devFundSharedPercent = _devFundSharedPercent;
+        teamFund = _teamFund;
+        teamFundSharedPercent = _teamFundSharedPercent;
     }
 
     function setMaxDiscountRate(uint256 _maxDiscountRate) external onlyOperator {
@@ -472,7 +477,7 @@ contract Treasury is ContractGuard {
 
         emit RedeemedBonds(msg.sender, _basedAmount, _bondAmount);
     }
-// ALTER THIS LOGTIC AND CHECK IF NUMBERS ALIGN
+
     function _sendToAcropolis(uint256 _amount) internal {
         IBasisAsset(based).mint(address(this), _amount);
 
@@ -490,7 +495,14 @@ contract Treasury is ContractGuard {
             emit DevFundFunded(block.timestamp, _devFundSharedAmount);
         }
 
-        _amount = _amount.sub(_daoFundSharedAmount).sub(_devFundSharedAmount);
+        uint256 _teamFundSharedAmount = 0;
+        if (teamFundSharedPercent > 0) {
+            _teamFundSharedAmount = _amount.mul(teamFundSharedPercent).div(10000);
+            IERC20(based).transfer(teamFund, _teamFundSharedAmount);
+            emit TeamFundFunded(block.timestamp, _teamFundSharedAmount);
+        }
+
+        _amount = _amount.sub(_daoFundSharedAmount).sub(_devFundSharedAmount).sub(_teamFundSharedAmount);
 
         IERC20(based).safeApprove(acropolis, 0);
         IERC20(based).safeApprove(acropolis, _amount);
@@ -513,7 +525,7 @@ contract Treasury is ContractGuard {
         previousEpochBasedPrice = getBasedPrice();
         uint256 basedSupply = getBasedCirculatingSupply().sub(seigniorageSaved);
         if (epoch < bootstrapEpochs) {
-            // 28 first epochs with 4.5% expansion
+            // 14 first epochs with 6% expansion
             _sendToAcropolis(basedSupply.mul(bootstrapSupplyExpansionPercent).div(10000));
         } else {
             if (previousEpochBasedPrice > basedPriceCeiling) {
