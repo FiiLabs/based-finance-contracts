@@ -26,7 +26,7 @@ async function main() {
     console.log(`Account balance: ${balance.toString()}`);
 
     // Set contract name and get appropriate args
-    let deployedContract: string = 'Treasury';
+    let deployedContract: string = 'BShare';
     let deployNetwork: string = 'fantom';
     deployedContractArgs = contractArgsMap.get(deployedContract);
 

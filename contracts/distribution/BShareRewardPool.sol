@@ -30,8 +30,6 @@ contract BShareRewardPool {
         bool isStarted; // if lastRewardTime has passed
     }
 
-    // WE NEED TO CREATE A POOL FOR TEAM ALLOCATIONS (BSHARE) AND USE DUMMY TOKENS FOR OUR TEAM MEMBERS TO STAKE DUMMY IN THAT POOL AND GET BSHARE AS REWARD!!!!!!!
-
     IERC20 public bshare;
 
     // Info of each pool.
@@ -48,10 +46,9 @@ contract BShareRewardPool {
 
     // The time when bSHARE mining ends.
     uint256 public poolEndTime;
-    // WE WANNA EMIT 300 BSHARE/DAY
-    // RECALCULATE HOW MUCH IT PAYS PER SECOND TO MATCH OUR TOTAL BSHARE AMOUNT
+
     uint256 public bSharePerSecond = 0.003486 ether; // 50000 bshare / (365 days * 24h * 60min * 60s)
-    uint256 public runningTime = 166 days; // 166 days  // RECALCULATE THE RUNNING TIME OF THIS POOL AS WELL
+    uint256 public runningTime = 166 days; // 166 days
     uint256 public constant TOTAL_REWARDS = 50000 ether;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -79,7 +76,7 @@ contract BShareRewardPool {
         }
     }
 
-    // Add a new lp to the pool. Can only be called by the owner.
+    // Add a new lp to the pool. Can only be called by the operator.
     function add(
         uint256 _allocPoint,
         IERC20 _token,
