@@ -47,7 +47,9 @@ contract BShareRewardPool {
     // The time when bSHARE mining ends.
     uint256 public poolEndTime;
 
-    uint256 public bSharePerSecond = 0.003486 ether; // 50000 bshare / (365 days * 24h * 60min * 60s)
+    address public daoFundAddress;
+
+    uint256 public bSharePerSecond = 0.003486 ether; // 50000 bshare / (166 days * 24h * 60min * 60s)
     uint256 public runningTime = 166 days; // 166 days
     uint256 public constant TOTAL_REWARDS = 50000 ether;
 
@@ -56,9 +58,15 @@ contract BShareRewardPool {
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event RewardPaid(address indexed user, uint256 amount);
 
-    constructor(address _bshare, uint256 _poolStartTime) {
+    constructor(
+        address _bshare,
+        address _daoFund,
+        uint256 _poolStartTime
+    ) {
         require(block.timestamp < _poolStartTime, "pool cant be started in the past");
         if (_bshare != address(0)) bshare = IERC20(_bshare);
+        if(_daoFund != address(0)) daoFundAddress = _daoFund;
+
         poolStartTime = _poolStartTime;
         poolEndTime = poolStartTime + runningTime;
         operator = msg.sender;
@@ -76,7 +84,7 @@ contract BShareRewardPool {
         }
     }
 
-    // Add a new lp to the pool. Can only be called by the operator.
+    // Add new lp to the pool. Can only be called by operator.
     function add(
         uint256 _allocPoint,
         IERC20 _token,
@@ -103,18 +111,43 @@ contract BShareRewardPool {
             }
         }
         bool _isStarted = (_lastRewardTime <= poolStartTime) || (_lastRewardTime <= block.timestamp);
-        poolInfo.push(PoolInfo({token: _token, allocPoint: _allocPoint, lastRewardTime: _lastRewardTime, accBSharePerShare: 0, isStarted: _isStarted}));
+        poolInfo.push(PoolInfo({
+            token: _token,
+            allocPoint: _allocPoint,
+            lastRewardTime: _lastRewardTime,
+            accBSharePerShare: 0,
+            isStarted: _isStarted
+        }));
         if (_isStarted) {
             totalAllocPoint = totalAllocPoint.add(_allocPoint);
         }
     }
 
-    // Update the given pool's bSHARE allocation point. Can only be called by the owner.
+    // starting allocations for our pools
+    // BASED-TOMB LP: 21500 $BSHARE
+    // BSHARE-TOMB LP: 21000 $BSHARE
+    // TEAM: 4500 $BSHARE
+    // CURVE STABLES LP (OR GEIST STABLES LP): 3000 $BSHARE
+
+    // Update the given pool's bSHARE allocation point. Can only be called by the operator.
+    // @allocPoints for TEAM can NOT be altered after added - PID 2
+    // @allocPoints for main LP pools can NOT be smaller than 12,000
     function set(uint256 _pid, uint256 _allocPoint) public onlyOperator {
         massUpdatePools();
+        require (_pid != 2, "CAN NOT ADJUST TEAM ALLOCATIONS");
+
         PoolInfo storage pool = poolInfo[_pid];
-        if (pool.isStarted) {
-            totalAllocPoint = totalAllocPoint.sub(pool.allocPoint).add(_allocPoint);
+
+        if (_pid == 0 || _pid == 1) {
+            require(_allocPoint >= 12000 * 10**18, "out of range"); // >= allocations for lp pools cant be less than 12,000
+            if (pool.isStarted) {
+                totalAllocPoint = totalAllocPoint.sub(pool.allocPoint).add(_allocPoint);
+            }
+        } else if (_pid > 2) {
+            if (pool.isStarted) {
+                totalAllocPoint = totalAllocPoint.sub(pool.allocPoint).add(_allocPoint);
+            }
+
         }
         pool.allocPoint = _allocPoint;
     }
@@ -191,7 +224,12 @@ contract BShareRewardPool {
                 emit RewardPaid(_sender, _pending);
             }
         }
-        if (_amount > 0) {
+        if (_amount > 0 && _pid > 2) {
+            pool.token.safeTransferFrom(_sender, address(this), _amount);
+            uint256 depositDebt = _amount.mul(20).div(10000);
+            user.amount = user.amount.add(_amount.sub(depositDebt));
+            pool.token.safeTransfer(daoFundAddress, depositDebt);
+        } else if (_amount > 0 && _pid <= 2) {
             pool.token.safeTransferFrom(_sender, address(this), _amount);
             user.amount = user.amount.add(_amount);
         }
@@ -244,22 +282,5 @@ contract BShareRewardPool {
 
     function setOperator(address _operator) external onlyOperator {
         operator = _operator;
-    }
-
-    function governanceRecoverUnsupported(
-        IERC20 _token,
-        uint256 amount,
-        address to
-    ) external onlyOperator {
-        if (block.timestamp < poolEndTime + 90 days) {
-            // do not allow to drain core token (bSHARE or lps) if less than 90 days after pool ends
-            require(_token != bshare, "bshare");
-            uint256 length = poolInfo.length;
-            for (uint256 pid = 0; pid < length; ++pid) {
-                PoolInfo storage pool = poolInfo[pid];
-                require(_token != pool.token, "pool.token");
-            }
-        }
-        _token.safeTransfer(to, amount);
     }
 }
