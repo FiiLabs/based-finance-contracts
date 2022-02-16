@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BasedTombZap is Ownable {
+contract BasedZap is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
