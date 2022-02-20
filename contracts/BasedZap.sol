@@ -27,7 +27,6 @@ contract BasedZap is Ownable {
 
     mapping (address => bool) public useNativeRouter;
 
-    // BShare address
     constructor(address _NATIVE) Ownable() {
         NATIVE = _NATIVE;
     }
@@ -37,7 +36,7 @@ contract BasedZap is Ownable {
     receive() external payable {}
 
     // @_from - Token we want to throw in
-    // @amount - amount of our _from
+    // @amount - amount of token we want to through in
     // @_to - LP address we are going to get from this zap-in function
 
     function zapInToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external {
@@ -76,13 +75,16 @@ contract BasedZap is Ownable {
         _swapNativeToLP(_to, msg.value, _recipient, routerAddr);
     }
 
+    // returns the amount of bonds events emitted based on the filter provided during a specific period
     function estimateZapIn(address _LP, address _router, uint256 _amt) public view returns (uint256, uint256) {
         uint256 zapAmt = _amt.div(2);
 
+        // Form UniswapV2Pair from address provided and extracts pair tokens
         IUniswapV2Pair pair = IUniswapV2Pair(_LP);
         address token0 = pair.token0();
         address token1 = pair.token1();
 
+        // Determine if one of extracted tokens is native protocol token
         if (token0 == NATIVE || token1 == NATIVE) {
             address token = token0 == NATIVE ? token1 : token0;
             uint256 tokenAmt = _estimateSwap(NATIVE, zapAmt, token, _router);
