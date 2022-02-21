@@ -28,7 +28,7 @@ let contractArgsMap = new Map<string, any[]>([
     ['BasedGenesisRewardPool', [basedTokenAddr, daoFundAddr, poolStartTime]],
     ['Oracle', [pairAddr, period, poolStartTime]],
     ['BasedRewardPool', [basedTokenAddr, poolStartTime]],
-    ['BasedZap', [basedTokenAddr]],
+    ['BasedTombLpZap', [bShareTokenAddr]],
     ['Stater', []],
     ['TaxOffice', ['0x5556B03e542EE4f515ba1A15d9640f0C97AdDe12']],
     ['NNTestToken', ['TEAMTOK', 'TEAMTOK']],
