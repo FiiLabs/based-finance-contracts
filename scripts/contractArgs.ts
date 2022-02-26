@@ -4,6 +4,7 @@
 let acropolisAddr: string = '0x4D06f72DdbA5EDaA240e5cc657553e89c2De7944';
 let basedTokenAddr: string = '0x8D7d3409881b51466B483B11Ea1B8A03cdEd89ae';
 let nativeTokenAddr: string = '0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83';
+let tombTokenAddrs: string = '0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7';
 let bShareTokenAddr: string = '0x49C290Ff692149A4E16611c694fdED42C954ab7a';
 let daoFundAddr: string = '0xA0e0F462d66De459711BC721cE1fdCC3D9405831';
 let pairAddr: string = '0xaB2ddCBB346327bBDF97120b0dD5eE172a9c8f9E';
@@ -17,7 +18,7 @@ let period: number = 21600;
 let contractArgsMap = new Map<string, any[]>([
     ['Acropolis', []],
     ['Based', []],
-    ['BasedTombZap', [nativeTokenAddr]],
+    ['BasedTombZap', [tombTokenAddrs]],
     ['contracts/BShareFtmZap.sol:BShareFtmZap', [basedTokenAddr]],
     ['BShare', []],
     ['BBond', []],

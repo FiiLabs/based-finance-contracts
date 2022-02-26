@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./interfaces/IHyperswapRouter01.sol";
+import "./interfaces/IHyperswapRouter.sol";
 import "./interfaces/IUniswapV2Pair.sol";
 import "./interfaces/IUniswapV2Router.sol";
 import "./interfaces/IVault.sol";
@@ -213,7 +213,7 @@ contract BasedTombZap is Ownable {
         uint256 tokenAmount = _swapNativeForToken(token, swapValue, address(this), routerAddress);
         _approveTokenIfNeeded(token, routerAddress);
         if (useNativeRouter[routerAddress]) {
-            IHyperswapRouter01 router = IHyperswapRouter01(routerAddress);
+            IHyperswapRouter router = IHyperswapRouter(routerAddress);
             return router.addLiquidityFTM{value : amount.sub(swapValue)}(token, tokenAmount, 0, 0, recipient, block.timestamp);
         }
         else {
@@ -386,6 +386,13 @@ contract BasedTombZap is Ownable {
 
 
     /* ========== RESTRICTED FUNCTIONS ========== */
+    function setNativeToken(address _NATIVE) external onlyOwner {
+        NATIVE = _NATIVE;
+    }
+
+    function getNativeToken() public view returns (address) {
+        return NATIVE;
+    }
 
     function setTokenBridgeForRouter(address token, address router, address bridgeToken) external onlyOwner {
         tokenBridgeForRouter[token][router] = bridgeToken;

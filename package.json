@@ -24,7 +24,7 @@
     "deploy-rinkeby": "npx hardhat run --network rinkeby scripts/deploy.ts",
     "deploy-fantom": "npx hardhat run --network fantom scripts/deploy.ts",
     "deploy-local": "npx hardhat run --network localhost scripts/deploy.ts",
-    "verify-fantom": "npx hardhat verify --contract contracts/BShareFtmZap.sol:BShareFtmZap --constructor-args scripts/verifyArgs.ts 0xf4bE342051d6A2139b5b10b6ac8c190eD07aba22 --network fantom",
+    "verify-fantom": "npx hardhat verify --contract contracts/BasedTombZap.sol:BasedTombZap --constructor-args scripts/verifyArgs.ts 0x34ee1B537AC1feC79cC5E93616628D98c0BF5727 --network fantom",
     "build": "npm run compile",
     "compile": "npx builder compile",
     "test": "npx builder test"
