@@ -24,7 +24,7 @@ const config: HardhatUserConfig = {
             //url: 'https://rpc.testnet.fantom.network/',
             url: 'https://rpc.ftm.tools/',
             accounts: [`${process.env.METAMASK_KEY}`],
-            gasMultiplier: 100,
+            // gasMultiplier: 2,
         },
         rinkeby: {
             url: `https://eth-rinkeby.alchemyapi.io/v2/${process.env.RINKEBY_API_KEY}`,
