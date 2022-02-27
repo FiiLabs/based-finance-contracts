@@ -14,22 +14,21 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BasedTombZap is Ownable {
+contract BasedTombLpZap is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
 
-    // @NATIVE - native token that is not a part of our zap-in LP
-    address private NATIVE;
+    // @NON_LP - NON_LP token that is not a part of our zap-in LP
+    address private NON_LP;
 
     mapping(address => mapping(address => address)) private tokenBridgeForRouter;
 
     mapping (address => bool) public useNativeRouter;
 
-    // BShare address
-    constructor(address _NATIVE) Ownable() {
-        NATIVE = _NATIVE;
+    constructor(address _NON_LP) Ownable() {
+        NON_LP = _NON_LP;
     }
 
     /* ========== External Functions ========== */
@@ -37,7 +36,7 @@ contract BasedTombZap is Ownable {
     receive() external payable {}
 
     // @_from - Token we want to throw in
-    // @amount - amount of our _from
+    // @amount - amount of token we want to through in
     // @_to - LP address we are going to get from this zap-in function
 
     function zapInToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external {
@@ -65,40 +64,43 @@ contract BasedTombZap is Ownable {
                 return (otherAmount, sellAmount);
             }
         } else {
-            // go through native token, that's not in our LP, for highest liquidity
-            uint256 nativeAmount = _from == NATIVE ? _amt : _estimateSwap(_from, _amt, NATIVE, _router);
-            return estimateZapIn(_to, _router, nativeAmount);
+            // go through NON_LP token, that's not in our LP, for highest liquidity
+            uint256 nonLpAmmount = _from == NON_LP ? _amt : _estimateSwap(_from, _amt, NON_LP, _router);
+            return estimateZapIn(_to, _router, nonLpAmmount);
         }
     }
 
-    // from Native to an LP token through the specified router
+    // from NON_LP to an LP token through the specified router
     function zapIn(address _to, address routerAddr, address _recipient) external payable {
-        _swapNativeToLP(_to, msg.value, _recipient, routerAddr);
+        _swapNonLpToLP(_to, msg.value, _recipient, routerAddr);
     }
 
+    // returns the amount of bonds events emitted based on the filter provided during a specific period
     function estimateZapIn(address _LP, address _router, uint256 _amt) public view returns (uint256, uint256) {
         uint256 zapAmt = _amt.div(2);
 
+        // Form UniswapV2Pair from address provided and extracts pair tokens
         IUniswapV2Pair pair = IUniswapV2Pair(_LP);
         address token0 = pair.token0();
         address token1 = pair.token1();
 
-        if (token0 == NATIVE || token1 == NATIVE) {
-            address token = token0 == NATIVE ? token1 : token0;
-            uint256 tokenAmt = _estimateSwap(NATIVE, zapAmt, token, _router);
-            if (token0 == NATIVE) {
+        // Determine if one of extracted tokens is NON_LP protocol token
+        if (token0 == NON_LP || token1 == NON_LP) {
+            address token = token0 == NON_LP ? token1 : token0;
+            uint256 tokenAmt = _estimateSwap(NON_LP, zapAmt, token, _router);
+            if (token0 == NON_LP) {
                 return (zapAmt, tokenAmt);
             } else {
                 return (tokenAmt, zapAmt);
             }
         } else {
-            uint256 token0Amt = _estimateSwap(NATIVE, zapAmt, token0, _router);
-            uint256 token1Amt = _estimateSwap(NATIVE, zapAmt, token1, _router);
+            uint256 token0Amt = _estimateSwap(NON_LP, zapAmt, token0, _router);
+            uint256 token1Amt = _estimateSwap(NON_LP, zapAmt, token1, _router);
 
             return (token0Amt, token1Amt);
         }
     }
-    // from an LP token to Native through specified router
+    // from an LP token to NON_LP through specified router
     function zapOut(address _from, uint256 amount, address routerAddr, address _recipient) external {
         // take the LP token
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
@@ -109,28 +111,28 @@ contract BasedTombZap is Ownable {
         address token1 = IUniswapV2Pair(_from).token1();
         _approveTokenIfNeeded(token0, routerAddr);
         _approveTokenIfNeeded(token1, routerAddr);
-        // check if either is already native token
-        if (token0 == NATIVE || token1 == NATIVE) {
+        // check if either is already NON_LP token
+        if (token0 == NON_LP || token1 == NON_LP) {
             // if so, we only need to swap one, figure out which and how much
-            address token = token0 != NATIVE ? token0 : token1;
+            address token = token0 != NON_LP ? token0 : token1;
             uint256 amtToken;
             uint256 amtETH;
             (amtToken, amtETH) = IUniswapV2Router(routerAddr).removeLiquidityETH(token, amount, 0, 0, address(this), block.timestamp);
-            // swap with msg.sender as recipient, so they already get the Native
-            _swapTokenForNative(token, amtToken, _recipient, routerAddr);
-            // send other half of Native
+            // swap with msg.sender as recipient, so they already get the NON_LP
+            _swapTokenForNonLp(token, amtToken, _recipient, routerAddr);
+            // send other half of NON_LP
             TransferHelper.safeTransferETH(_recipient, amtETH);
         } else {
-            // convert both for Native with msg.sender as recipient
+            // convert both for NON_LP with msg.sender as recipient
             uint256 amt0;
             uint256 amt1;
             (amt0, amt1) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, 0, 0, address(this), block.timestamp);
-            _swapTokenForNative(token0, amt0, _recipient, routerAddr);
-            _swapTokenForNative(token1, amt1, _recipient, routerAddr);
+            _swapTokenForNonLp(token0, amt0, _recipient, routerAddr);
+            _swapTokenForNonLp(token1, amt1, _recipient, routerAddr);
         }
     }
-    // from an LP token to an ERC20 through specified router
 
+    // from an LP token to an ERC20 through specified router
     function zapOutToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, routerAddr);
@@ -157,10 +159,10 @@ contract BasedTombZap is Ownable {
         _swap(_from, amount, _to, _recipient, routerAddr);
     }
 
-    function swapToNative(address _from, uint256 amount, address routerAddr, address _recipient) external {
+    function swapToNonLp(address _from, uint256 amount, address routerAddr, address _recipient) external {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, routerAddr);
-        _swapTokenForNative(_from, amount, _recipient, routerAddr);
+        _swapTokenForNonLp(_from, amount, _recipient, routerAddr);
     }
 
 
@@ -187,30 +189,30 @@ contract BasedTombZap is Ownable {
             ( , , liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, 0, 0, recipient, block.timestamp);
             return liquidity;
         } else {
-            // go through native token for highest liquidity
-            uint256 nativeAmount = _swapTokenForNative(_from, amount, address(this), routerAddr);
-            return _swapNativeToLP(_to, nativeAmount, recipient, routerAddr);
+            // go through NON_LP token for highest liquidity
+            uint256 nonLpAmmount = _swapTokenForNonLp(_from, amount, address(this), routerAddr);
+            return _swapNonLpToLP(_to, nonLpAmmount, recipient, routerAddr);
         }
     }
 
-    function _swapNativeToLP(address _LP, uint256 amount, address recipient, address routerAddress) private returns (uint256) {
+    function _swapNonLpToLP(address _LP, uint256 amount, address recipient, address routerAddress) private returns (uint256) {
         // LP
         IUniswapV2Pair pair = IUniswapV2Pair(_LP);
         address token0 = pair.token0();
         address token1 = pair.token1();
         uint256 liquidity;
-        if (token0 == NATIVE || token1 == NATIVE) {
-            address token = token0 == NATIVE ? token1 : token0;
-            ( , , liquidity) = _swapHalfNativeAndProvide(token, amount, routerAddress, recipient);
+        if (token0 == NON_LP || token1 == NON_LP) {
+            address token = token0 == NON_LP ? token1 : token0;
+            ( , , liquidity) = _swapHalfNonLpAndProvide(token, amount, routerAddress, recipient);
         } else {
-            ( , , liquidity) = _swapNativeToEqualTokensAndProvide(token0, token1, amount, routerAddress, recipient);
+            ( , , liquidity) = _swapNonLpToEqualTokensAndProvide(token0, token1, amount, routerAddress, recipient);
         }
         return liquidity;
     }
 
-    function _swapHalfNativeAndProvide(address token, uint256 amount, address routerAddress, address recipient) private returns (uint256, uint256, uint256) {
+    function _swapHalfNonLpAndProvide(address token, uint256 amount, address routerAddress, address recipient) private returns (uint256, uint256, uint256) {
         uint256 swapValue = amount.div(2);
-        uint256 tokenAmount = _swapNativeForToken(token, swapValue, address(this), routerAddress);
+        uint256 tokenAmount = _swapNonLpForToken(token, swapValue, address(this), routerAddress);
         _approveTokenIfNeeded(token, routerAddress);
         if (useNativeRouter[routerAddress]) {
             IHyperswapRouter01 router = IHyperswapRouter01(routerAddress);
@@ -222,28 +224,28 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256, uint256, uint256) {
+    function _swapNonLpToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256, uint256, uint256) {
         uint256 swapValue = amount.div(2);
-        uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress);
-        uint256 token1Amount = _swapNativeForToken(token1, amount.sub(swapValue), address(this), routerAddress);
+        uint256 token0Amount = _swapNonLpForToken(token0, swapValue, address(this), routerAddress);
+        uint256 token1Amount = _swapNonLpForToken(token1, amount.sub(swapValue), address(this), routerAddress);
         _approveTokenIfNeeded(token0, routerAddress);
         _approveTokenIfNeeded(token1, routerAddress);
         IUniswapV2Router router = IUniswapV2Router(routerAddress);
         return router.addLiquidity(token0, token1, token0Amount, token1Amount, 0, 0, recipient, block.timestamp);
     }
 
-    function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr) private returns (uint256) {
+    function _swapNonLpForToken(address token, uint256 value, address recipient, address routerAddr) private returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
         if (tokenBridgeForRouter[token][routerAddr] != address(0)) {
             path = new address[](3);
-            path[0] = NATIVE;
+            path[0] = NON_LP;
             path[1] = tokenBridgeForRouter[token][routerAddr];
             path[2] = token;
         } else {
             path = new address[](2);
-            path[0] = NATIVE;
+            path[0] = NON_LP;
             path[1] = token;
         }
 
@@ -251,7 +253,7 @@ contract BasedTombZap is Ownable {
         return amounts[amounts.length - 1];
     }
 
-    function _swapTokenForNative(address token, uint256 amount, address recipient, address routerAddr) private returns (uint256) {
+    function _swapTokenForNonLp(address token, uint256 amount, address recipient, address routerAddr) private returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
@@ -283,7 +285,7 @@ contract BasedTombZap is Ownable {
                 path = new address[](5);
                 path[0] = _from;
                 path[1] = fromBridge;
-                path[2] = NATIVE;
+                path[2] = NON_LP;
                 path[3] = toBridge;
                 path[4] = _to;
             } else {
@@ -293,33 +295,33 @@ contract BasedTombZap is Ownable {
                 path[2] = _to;
             }
         } else if (fromBridge != address(0)) {
-            if (_to == NATIVE) {
+            if (_to == NON_LP) {
                 path = new address[](3);
                 path[0] = _from;
                 path[1] = fromBridge;
-                path[2] = NATIVE;
+                path[2] = NON_LP;
             } else {
                 path = new address[](4);
                 path[0] = _from;
                 path[1] = fromBridge;
-                path[2] = NATIVE;
+                path[2] = NON_LP;
                 path[3] = _to;
             }
         } else if (toBridge != address(0)) {
             path = new address[](4);
             path[0] = _from;
-            path[1] = NATIVE;
+            path[1] = NON_LP;
             path[2] = toBridge;
             path[3] = _to;
-        } else if (_from == NATIVE || _to == NATIVE) {
+        } else if (_from == NON_LP || _to == NON_LP) {
             path = new address[](2);
             path[0] = _from;
             path[1] = _to;
         } else {
-            // Go through Native
+            // Go through NON_LP
             path = new address[](3);
             path[0] = _from;
-            path[1] = NATIVE;
+            path[1] = NON_LP;
             path[2] = _to;
         }
 
@@ -340,7 +342,7 @@ contract BasedTombZap is Ownable {
                 path = new address[](5);
                 path[0] = _from;
                 path[1] = fromBridge;
-                path[2] = NATIVE;
+                path[2] = NON_LP;
                 path[3] = toBridge;
                 path[4] = _to;
             } else {
@@ -350,33 +352,33 @@ contract BasedTombZap is Ownable {
                 path[2] = _to;
             }
         } else if (fromBridge != address(0)) {
-            if (_to == NATIVE) {
+            if (_to == NON_LP) {
                 path = new address[](3);
                 path[0] = _from;
                 path[1] = fromBridge;
-                path[2] = NATIVE;
+                path[2] = NON_LP;
             } else {
                 path = new address[](4);
                 path[0] = _from;
                 path[1] = fromBridge;
-                path[2] = NATIVE;
+                path[2] = NON_LP;
                 path[3] = _to;
             }
         } else if (toBridge != address(0)) {
             path = new address[](4);
             path[0] = _from;
-            path[1] = NATIVE;
+            path[1] = NON_LP;
             path[2] = toBridge;
             path[3] = _to;
-        } else if (_from == NATIVE || _to == NATIVE) {
+        } else if (_from == NON_LP || _to == NON_LP) {
             path = new address[](2);
             path[0] = _from;
             path[1] = _to;
         } else {
-            // Go through Native
+            // Go through NON_LP
             path = new address[](3);
             path[0] = _from;
-            path[1] = NATIVE;
+            path[1] = NON_LP;
             path[2] = _to;
         }
 

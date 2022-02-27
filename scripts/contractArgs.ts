@@ -3,6 +3,7 @@
  **/
 let acropolisAddr: string = '0x4D06f72DdbA5EDaA240e5cc657553e89c2De7944';
 let basedTokenAddr: string = '0x8D7d3409881b51466B483B11Ea1B8A03cdEd89ae';
+let tombTokenAddr: string = '0x6c021Ae822BEa943b2E66552bDe1D2696a53fbB7';
 let bShareTokenAddr: string = '0x49C290Ff692149A4E16611c694fdED42C954ab7a';
 let daoFundAddr: string = '0xA0e0F462d66De459711BC721cE1fdCC3D9405831';
 let pairAddr: string = '0xaB2ddCBB346327bBDF97120b0dD5eE172a9c8f9E';
@@ -28,7 +29,7 @@ let contractArgsMap = new Map<string, any[]>([
     ['BasedGenesisRewardPool', [basedTokenAddr, daoFundAddr, poolStartTime]],
     ['Oracle', [pairAddr, period, poolStartTime]],
     ['BasedRewardPool', [basedTokenAddr, poolStartTime]],
-    ['Zap', [basedTokenAddr]],
+    ['BasedTombLpZap', [tombTokenAddr]],
     ['Stater', []],
     ['TaxOffice', ['0x5556B03e542EE4f515ba1A15d9640f0C97AdDe12']],
     ['NNTestToken', ['TEAMTOK', 'TEAMTOK']],
