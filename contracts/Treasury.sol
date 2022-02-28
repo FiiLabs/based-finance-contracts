@@ -250,7 +250,7 @@ contract Treasury is ContractGuard {
         address _basedOracle,
         address _acropolis,
         uint256 _startTime
-    ) public notInitialized {
+    ) public notInitialized onlyOperator {
         based = _based;
         bbond = _bbond;
         bshare = _bshare;

@@ -127,7 +127,7 @@ contract Acropolis is ShareWrapper, ContractGuard {
         IERC20 _based,
         IERC20 _share,
         ITreasury _treasury
-    ) public notInitialized {
+    ) public notInitialized onlyOperator {
         based = _based;
         share = _share;
         treasury = _treasury;
