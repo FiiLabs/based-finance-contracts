@@ -379,10 +379,12 @@ contract Treasury is ContractGuard {
     }
 
     function setMaxDiscountRate(uint256 _maxDiscountRate) external onlyOperator {
+        require(_maxDiscountRate <= 5000, "_maxDiscountRate is over 50%");
         maxDiscountRate = _maxDiscountRate;
     }
 
     function setMaxPremiumRate(uint256 _maxPremiumRate) external onlyOperator {
+        require(_maxPremiumRate <= 20000, "_maxPremiumRate is over 200%");
         maxPremiumRate = _maxPremiumRate;
     }
 
