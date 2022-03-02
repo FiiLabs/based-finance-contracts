@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./utils/ContractGuard.sol";
 import "./interfaces/IBasisAsset.sol";
 import "./interfaces/ITreasury.sol";
+import "./owner/Operator.sol";
 
 contract ShareWrapper {
     using SafeMath for uint256;
@@ -50,7 +51,7 @@ __________                             .___   ___________.__
  |______  /(____  //____  > \___  >\____ |     \___  /   |__||___|  /(____  /|___|  / \___  >\___  >
         \/      \/      \/      \/      \/         \/             \/      \/      \/      \/     \/
 */
-contract Acropolis is ShareWrapper, ContractGuard {
+contract Acropolis is ShareWrapper, ContractGuard, Operator {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -70,9 +71,6 @@ contract Acropolis is ShareWrapper, ContractGuard {
     }
 
     /* ========== STATE VARIABLES ========== */
-
-    // governance
-    address public operator;
 
     // flags
     bool public initialized = false;
@@ -95,11 +93,6 @@ contract Acropolis is ShareWrapper, ContractGuard {
     event RewardAdded(address indexed user, uint256 reward);
 
     /* ========== Modifiers =============== */
-
-    modifier onlyOperator() {
-        require(operator == msg.sender, "Acropolis: caller is not the operator");
-        _;
-    }
 
     modifier andrasExists {
         require(balanceOf(msg.sender) > 0, "Acropolis: The andras does not exist");
@@ -127,7 +120,7 @@ contract Acropolis is ShareWrapper, ContractGuard {
         IERC20 _based,
         IERC20 _share,
         ITreasury _treasury
-    ) public notInitialized {
+    ) public notInitialized onlyOperator {
         based = _based;
         share = _share;
         treasury = _treasury;
@@ -135,20 +128,24 @@ contract Acropolis is ShareWrapper, ContractGuard {
         AcropolisSnapshot memory genesisSnapshot = AcropolisSnapshot({time : block.number, rewardReceived : 0, rewardPerShare : 0});
         acropolisHistory.push(genesisSnapshot);
 
-        withdrawLockupEpochs = 4; // Lock for 6 epochs (36h) before release withdraw
-        rewardLockupEpochs = 2; // Lock for 3 epochs (18h) before release claimReward    !!! THIS IS ALTERED TO SMALLER PERIODS
+        withdrawLockupEpochs = 4; // Lock for 4 epochs (24h) before release withdraw
+        rewardLockupEpochs = 2; // Lock for 2 epochs (12h) before release claimReward
 
         initialized = true;
-        operator = msg.sender;
         emit Initialized(msg.sender, block.number);
     }
 
     function setOperator(address _operator) external onlyOperator {
-        operator = _operator;
+        transferOperator(_operator);
+    }
+
+    function renounceOperator() external onlyOperator {
+        _renounceOperator();
     }
 
     function setLockUp(uint256 _withdrawLockupEpochs, uint256 _rewardLockupEpochs) external onlyOperator {
         require(_withdrawLockupEpochs >= _rewardLockupEpochs && _withdrawLockupEpochs <= 56, "_withdrawLockupEpochs: out of range"); // <= 2 week
+        require(_withdrawLockupEpochs > 0 && _rewardLockupEpochs > 0);
         withdrawLockupEpochs = _withdrawLockupEpochs;
         rewardLockupEpochs = _rewardLockupEpochs;
     }

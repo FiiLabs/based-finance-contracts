@@ -37,4 +37,9 @@ contract Operator is Context, Ownable {
         emit OperatorTransferred(address(0), newOperator_);
         _operator = newOperator_;
     }
+
+    function _renounceOperator() public onlyOwner {
+        emit OperatorTransferred(_operator, address(0));
+        _operator = address(0);
+    }
 }

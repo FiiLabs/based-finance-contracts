@@ -14,6 +14,7 @@ import "./utils/ContractGuard.sol";
 import "./interfaces/IBasisAsset.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IAcropolis.sol";
+import "./owner/Operator.sol";
 
 /*
 __________                             .___   ___________.__
@@ -23,7 +24,7 @@ __________                             .___   ___________.__
  |______  /(____  //____  > \___  >\____ |     \___  /   |__||___|  /(____  /|___|  / \___  >\___  >
         \/      \/      \/      \/      \/         \/             \/      \/      \/      \/     \/
 */
-contract Treasury is ContractGuard {
+contract Treasury is ContractGuard, Operator {
     using SafeERC20 for IERC20;
     using Address for address;
     using SafeMath for uint256;
@@ -33,9 +34,6 @@ contract Treasury is ContractGuard {
     uint256 public constant PERIOD = 6 hours;
 
     /* ========== STATE VARIABLES ========== */
-
-    // governance
-    address public operator;
 
     // flags
     bool public initialized = false;
@@ -47,7 +45,7 @@ contract Treasury is ContractGuard {
 
     //=================================================================// exclusions from total supply
     address[] public excludedFromTotalSupply = [
-        address(0x9Ec66B9409d4cD8D4a4C90950Ff0fd26bB39ad84)    // BasedGenesisPool
+        address(0x9Ec66B9409d4cD8D4a4C90950Ff0fd26bB39ad84) // BasedGenesisPool
     ];
 
     // core components
@@ -109,11 +107,6 @@ contract Treasury is ContractGuard {
     event TeamFundFunded(uint256 timestamp, uint256 seigniorage);
 
     /* =================== Modifier =================== */
-
-    modifier onlyOperator() {
-        require(operator == msg.sender, "Treasury: caller is not the operator");
-        _;
-    }
 
     modifier checkCondition {
         require(block.timestamp >= startTime, "Treasury: not started yet");
@@ -250,7 +243,7 @@ contract Treasury is ContractGuard {
         address _basedOracle,
         address _acropolis,
         uint256 _startTime
-    ) public notInitialized {
+    ) public notInitialized onlyOperator {
         based = _based;
         bbond = _bbond;
         bshare = _bshare;
@@ -258,14 +251,14 @@ contract Treasury is ContractGuard {
         acropolis = _acropolis;
         startTime = _startTime;
 
-        basedPriceOne = 10**18;
+        basedPriceOne = 10 ** 18;
         basedPriceCeiling = basedPriceOne.mul(101).div(100);
 
         // Dynamic max expansion percent
         supplyTiers = [0 ether, 206000 ether, 386000 ether, 530000 ether, 1300000 ether, 5000000 ether, 10000000 ether];
         maxExpansionTiers = [600, 500, 450, 400, 200, 100, 50];
 
-        maxSupplyExpansionPercent = 600; // Upto 4.0% supply for expansion
+        maxSupplyExpansionPercent = 600; // Upto 6% supply for expansion
 
         bondDepletionFloorPercent = 10000; // 100% of Bond supply for depletion floor
         seigniorageExpansionFloorPercent = 3500; // At least 35% of expansion reserved for acropolis
@@ -275,7 +268,7 @@ contract Treasury is ContractGuard {
         premiumThreshold = 110;
         premiumPercent = 7000;
 
-        // First 28 epochs with 4.5% expansion
+        // First 14 epochs with 6% expansion
         bootstrapEpochs = 14;
         bootstrapSupplyExpansionPercent = 600;
 
@@ -283,12 +276,15 @@ contract Treasury is ContractGuard {
         seigniorageSaved = IERC20(based).balanceOf(address(this));
 
         initialized = true;
-        operator = msg.sender;
         emit Initialized(msg.sender, block.number);
     }
 
     function setOperator(address _operator) external onlyOperator {
-        operator = _operator;
+        transferOperator(_operator);
+    }
+
+    function renounceOperator() external onlyOperator {
+        _renounceOperator();
     }
 
     function setAcropolis(address _acropolis) external onlyOperator {
@@ -311,7 +307,7 @@ contract Treasury is ContractGuard {
     // =================== ALTER THE NUMBERS IN LOGIC!!!! =================== //
     function setSupplyTiersEntry(uint8 _index, uint256 _value) external onlyOperator returns (bool) {
         require(_index >= 0, "Index has to be higher than 0");
-        require(_index <7, "Index has to be lower than count of tiers");
+        require(_index < 7, "Index has to be lower than count of tiers");
         if (_index > 0) {
             require(_value > supplyTiers[_index - 1]);
         }
@@ -351,11 +347,8 @@ contract Treasury is ContractGuard {
         bootstrapEpochs = _bootstrapEpochs;
         bootstrapSupplyExpansionPercent = _bootstrapSupplyExpansionPercent;
     }
-//===============================================================================================================================================
+    //======================================================================
     function setExtraFunds(
-        // DAO FUND - 12%
-        // DEVS WALLET - 3%
-        // TEAM WALLET - 5%
         address _daoFund,
         uint256 _daoFundSharedPercent,
         address _devFund,
@@ -364,11 +357,11 @@ contract Treasury is ContractGuard {
         uint256 _teamFundSharedPercent
     ) external onlyOperator {
         require(_daoFund != address(0), "zero");
-        require(_daoFundSharedPercent <= 1500, "out of range"); // <= 15%
+        require(_daoFundSharedPercent <= 1500, "out of range");
         require(_devFund != address(0), "zero");
-        require(_devFundSharedPercent <= 350, "out of range"); // <= 3.5%
+        require(_devFundSharedPercent <= 350, "out of range");
         require(_teamFund != address(0), "zero");
-        require(_teamFundSharedPercent <= 550, "out of range"); // <= 5.5%
+        require(_teamFundSharedPercent <= 550, "out of range");
 
         daoFund = _daoFund;
         daoFundSharedPercent = _daoFundSharedPercent;
@@ -379,10 +372,12 @@ contract Treasury is ContractGuard {
     }
 
     function setMaxDiscountRate(uint256 _maxDiscountRate) external onlyOperator {
+        require(_maxDiscountRate <= 20000, "_maxDiscountRate is over 200%");
         maxDiscountRate = _maxDiscountRate;
     }
 
     function setMaxPremiumRate(uint256 _maxPremiumRate) external onlyOperator {
+        require(_maxPremiumRate <= 20000, "_maxPremiumRate is over 200%");
         maxPremiumRate = _maxPremiumRate;
     }
 
