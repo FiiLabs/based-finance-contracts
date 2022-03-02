@@ -25,7 +25,9 @@ contract Oracle is Epoch {
     using SafeMath for uint256;
 
     /* ========== STATE VARIABLES ========== */
-
+    uint public PERIOD = 21600; // 6 hour TWAP (time-weighted average price)
+    uint public CONSULT_LENIENCY = 120; // Used for being able to consult past the period end
+    bool public ALLOW_STALE_CONSULTS = false; // If false, consult() will fail if the TWAP is stale
     // uniswap
     address public token0;
     address public token1;
@@ -56,12 +58,31 @@ contract Oracle is Epoch {
         require(reserve0 != 0 && reserve1 != 0, "Oracle: NO_RESERVES"); // ensure that there's liquidity in the pair
     }
 
+    function setNewPeriod(uint256 _period) external onlyOperator {
+        this.setPeriod(_period);
+    }
+
+    function setConsultLeniency(uint _consult_leniency) external onlyOperator {
+        CONSULT_LENIENCY = _consult_leniency;
+    }
+    function setAllowStaleConsults(bool _allow_stale_consults) external onlyOperator {
+        ALLOW_STALE_CONSULTS = _allow_stale_consults;
+    }
+    function canUpdate() public view returns (bool) {
+        uint32 blockTimestamp = UniswapV2OracleLibrary.currentBlockTimestamp();
+        uint32 timeElapsed = blockTimestamp - blockTimestampLast; // Overflow is desired
+        return (timeElapsed >= PERIOD);
+    }
+
     /* ========== MUTABLE FUNCTIONS ========== */
 
     /** @dev Updates 1-day EMA price from Uniswap.  */
     function update() external checkEpoch {
         (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) = UniswapV2OracleLibrary.currentCumulativePrices(address(pair));
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+
+        // Ensure that at least one full period has passed since the last update
+        require(timeElapsed >= PERIOD, "UniswapPairOracle: PERIOD_NOT_ELAPSED");
 
         if (timeElapsed == 0) {
             // prevent divided by zero
@@ -84,6 +105,12 @@ contract Oracle is Epoch {
 
     // note this will always return 0 before update has been called successfully for the first time.
     function consult(address _token, uint256 _amountIn) external view returns (uint144 amountOut) {
+        uint32 blockTimestamp = UniswapV2OracleLibrary.currentBlockTimestamp();
+        uint32 timeElapsed = blockTimestamp - blockTimestampLast; // Overflow is desired
+
+        // Ensure that the price is not stale
+        require((timeElapsed < (PERIOD + CONSULT_LENIENCY)) || ALLOW_STALE_CONSULTS, "UniswapPairOracle: PRICE_IS_STALE_NEED_TO_CALL_UPDATE");
+
         if (_token == token0) {
             amountOut = price0Average.mul(_amountIn).decode144();
         } else {
@@ -93,8 +120,14 @@ contract Oracle is Epoch {
     }
 
     function twap(address _token, uint256 _amountIn) external view returns (uint144 _amountOut) {
+
         (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) = UniswapV2OracleLibrary.currentCumulativePrices(address(pair));
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+
+        // Ensure that the price is not stale
+        require((timeElapsed < (PERIOD + CONSULT_LENIENCY)) || ALLOW_STALE_CONSULTS, "UniswapPairOracle: PRICE_IS_STALE_NEED_TO_CALL_UPDATE");
+
+
         if (_token == token0) {
             _amountOut = FixedPoint.uq112x112(uint224((price0Cumulative - price0CumulativeLast) / timeElapsed)).mul(_amountIn).decode144();
         } else if (_token == token1) {
