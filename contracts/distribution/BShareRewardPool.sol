@@ -5,10 +5,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../utils/ContractGuard.sol";
 
 // Note that this pool has no minter key of bSHARE (rewards).
 // Instead, the governance will call bSHARE distributeReward method and send reward to this pool at the beginning.
-contract BShareRewardPool {
+contract BShareRewardPool is ContractGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -24,6 +25,7 @@ contract BShareRewardPool {
     // Info of each pool.
     struct PoolInfo {
         IERC20 token; // Address of LP token contract.
+        uint256 depFee; // deposit fee that is applied to created pool.
         uint256 allocPoint; // How many allocation points assigned to this pool. bSHAREs to distribute per block.
         uint256 lastRewardTime; // Last time that bSHAREs distribution occurs.
         uint256 accBSharePerShare; // Accumulated bSHAREs per share, times 1e18. See below.
@@ -218,7 +220,7 @@ contract BShareRewardPool {
     }
 
     // Deposit LP tokens.
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public onlyOneBlock {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_sender];
@@ -232,7 +234,7 @@ contract BShareRewardPool {
         }
         if (_amount > 0 ) {
             pool.token.safeTransferFrom(_sender, address(this), _amount);
-            uint256 depositDebt = _amount.mul(pool.depFee).div(10000);  // might need to devide by 10*18 to get the right number
+            uint256 depositDebt = _amount.mul(pool.depFee).div(10000);
             user.amount = user.amount.add(_amount.sub(depositDebt));
             pool.token.safeTransfer(daoFundAddress, depositDebt);
         }
@@ -241,7 +243,7 @@ contract BShareRewardPool {
     }
 
     // Withdraw LP tokens.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public onlyOneBlock {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_sender];

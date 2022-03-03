@@ -5,10 +5,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "../utils/ContractGuard.sol";
 
 // Note that this pool has no minter key of BASED (rewards).
 // Instead, the governance will call BASED distributeReward method and send reward to this pool at the beginning.
-contract BasedGenesisRewardPool {
+contract BasedGenesisRewardPool is ContractGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -165,7 +166,8 @@ contract BasedGenesisRewardPool {
         uint256 tokenSupply = pool.token.balanceOf(address(this));
         if (block.timestamp > pool.lastRewardTime && tokenSupply != 0) {
             uint256 _generatedReward = getGeneratedReward(pool.lastRewardTime, block.timestamp);
-            uint256 _basedReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
+            uint256 _multiplyHelper =  _generatedReward.mul(pool.allocPoint); // intermidiate var to avoid multiply and division calc errors
+            uint256 _basedReward = _multiplyHelper.div(totalAllocPoint);
             accBasedPerShare = accBasedPerShare.add(_basedReward.mul(1e18).div(tokenSupply));
         }
         return user.amount.mul(accBasedPerShare).div(1e18).sub(user.rewardDebt);
@@ -204,7 +206,7 @@ contract BasedGenesisRewardPool {
 
     // Deposit tokens.
 
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public onlyOneBlock {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_sender];
@@ -229,7 +231,7 @@ contract BasedGenesisRewardPool {
     }
 
     // Withdraw tokens.
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public onlyOneBlock {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_sender];
