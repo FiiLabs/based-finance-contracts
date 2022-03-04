@@ -27,7 +27,7 @@ contract BasedTombZap is Ownable {
     mapping (address => bool) public useNativeRouter;
 
     modifier whitelist(address route) {
-        require(useNativeRouter[route]);
+        require(useNativeRouter[route], "route not allowed");
         _;
     }
 
@@ -212,7 +212,8 @@ contract BasedTombZap is Ownable {
     }
 
 
-    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private whitelist(routerAddress) returns (uint256, uint256, uint256) {
+    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256, uint256, uint256) {
+        require(useNativeRouter[routerAddress], "route not allowed");
         uint256 swapValue = amount.div(2);
         IUniswapV2Router router = IUniswapV2Router(routerAddress);
 
@@ -394,5 +395,9 @@ contract BasedTombZap is Ownable {
 
     function setUseNativeRouter(address router) external onlyOwner {
         useNativeRouter[router] = true;
+    }
+
+    function removeNativeRouter(address router) external onlyOwner {
+        useNativeRouter[router] = false;
     }
 }
