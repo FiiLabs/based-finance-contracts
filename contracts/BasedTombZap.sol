@@ -26,6 +26,11 @@ contract BasedTombZap is Ownable {
 
     mapping (address => bool) public useNativeRouter;
 
+    modifier whitelist(address route) {
+        require(useNativeRouter[route]);
+        _;
+    }
+
     // BShare address
     constructor(address _NATIVE) Ownable() {
         NATIVE = _NATIVE;
@@ -43,7 +48,7 @@ contract BasedTombZap is Ownable {
     // @amount - amount of our _from
     // @_to - LP address we are going to get from this zap-in function
 
-    function zapInToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external {
+    function zapInToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external whitelist(routerAddr) {
         // From an ERC20 to an LP token, through specified router, going through base asset if necessary
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         // we'll need this approval to add liquidity
@@ -51,7 +56,7 @@ contract BasedTombZap is Ownable {
         _swapTokenToLP(_from, amount, _to, _recipient, routerAddr);
     }
 
-    function estimateZapInToken(address _from, address _to, address _router, uint256 _amt) public view returns (uint256, uint256) {
+    function estimateZapInToken(address _from, address _to, address _router, uint256 _amt) public view whitelist(_router) returns (uint256, uint256) {
         // get pairs for desired lp
         // check if we already have one of the assets
         if (_from == IUniswapV2Pair(_to).token0() || _from == IUniswapV2Pair(_to).token1()) {
@@ -75,11 +80,11 @@ contract BasedTombZap is Ownable {
     }
 
     // from Native to an LP token through the specified router
-    function zapIn(address _to, address routerAddr, address _recipient) external payable {
+    function zapIn(address _to, address routerAddr, address _recipient) external payable whitelist(routerAddr) {
         _swapNativeToLP(_to, msg.value, _recipient, routerAddr);
     }
 
-    function estimateZapIn(address _LP, address _router, uint256 _amt) public view returns (uint256, uint256) {
+    function estimateZapIn(address _LP, address _router, uint256 _amt) public view whitelist(_router) returns (uint256, uint256) {
         uint256 zapAmt = _amt.div(2);
 
         IUniswapV2Pair pair = IUniswapV2Pair(_LP);
@@ -102,7 +107,7 @@ contract BasedTombZap is Ownable {
         }
     }
     // from an LP token to Native through specified router
-    function zapOut(address _from, uint256 amount, address routerAddr, address _recipient) external {
+    function zapOut(address _from, uint256 amount, address routerAddr, address _recipient) external whitelist(routerAddr) {
         // take the LP token
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, routerAddr);
@@ -134,7 +139,7 @@ contract BasedTombZap is Ownable {
     }
     // from an LP token to an ERC20 through specified router
 
-    function zapOutToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external {
+    function zapOutToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) whitelist(routerAddr) external {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, routerAddr);
 
@@ -154,13 +159,13 @@ contract BasedTombZap is Ownable {
         IERC20(_to).safeTransfer(_recipient, amt0.add(amt1));
     }
 
-    function swapToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external {
+    function swapToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external whitelist(routerAddr) {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, routerAddr);
         _swap(_from, amount, _to, _recipient, routerAddr);
     }
 
-    function swapToNative(address _from, uint256 amount, address routerAddr, address _recipient) external {
+    function swapToNative(address _from, uint256 amount, address routerAddr, address _recipient) external whitelist(routerAddr) {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, routerAddr);
         _swapTokenForNative(_from, amount, _recipient, routerAddr);
@@ -169,13 +174,13 @@ contract BasedTombZap is Ownable {
 
     /* ========== Private Functions ========== */
 
-    function _approveTokenIfNeeded(address token, address router) private {
+    function _approveTokenIfNeeded(address token, address router) private whitelist(router) {
         if (IERC20(token).allowance(address(this), router) == 0) {
             IERC20(token).safeApprove(router, type(uint256).max);
         }
     }
 
-    function _swapTokenToLP(address _from, uint256 amount, address _to, address recipient, address routerAddr) private returns (uint256) {
+    function _swapTokenToLP(address _from, uint256 amount, address _to, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
         // get pairs for desired lp
         if (_from == IUniswapV2Pair(_to).token0() || _from == IUniswapV2Pair(_to).token1()) { // check if we already have one of the assets
             // if so, we're going to sell half of _from for the other token we need
@@ -196,7 +201,7 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapNativeToLP(address _LP, uint256 amount, address recipient, address routerAddress) private returns (uint256) {
+    function _swapNativeToLP(address _LP, uint256 amount, address recipient, address routerAddress) private whitelist(routerAddress) returns (uint256) {
         // LP
         IUniswapV2Pair pair = IUniswapV2Pair(_LP);
         address token0 = pair.token0();  // based
@@ -207,7 +212,7 @@ contract BasedTombZap is Ownable {
     }
 
 
-    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256, uint256, uint256) {
+    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private whitelist(routerAddress) returns (uint256, uint256, uint256) {
         uint256 swapValue = amount.div(2);
         IUniswapV2Router router = IUniswapV2Router(routerAddress);
 
@@ -224,7 +229,7 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr) private returns (uint256) {
+    function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
@@ -243,7 +248,7 @@ contract BasedTombZap is Ownable {
         return amounts[amounts.length - 1];
     }
 
-    function _swapTokenForNative(address token, uint256 amount, address recipient, address routerAddr) private returns (uint256) {
+    function _swapTokenForNative(address token, uint256 amount, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
@@ -262,7 +267,7 @@ contract BasedTombZap is Ownable {
         return amounts[amounts.length - 1];
     }
 
-    function _swap(address _from, uint256 amount, address _to, address recipient, address routerAddr) private returns (uint256) {
+    function _swap(address _from, uint256 amount, address _to, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
         address fromBridge = tokenBridgeForRouter[_from][routerAddr];
@@ -319,7 +324,7 @@ contract BasedTombZap is Ownable {
         return amounts[amounts.length - 1];
     }
 
-    function _estimateSwap(address _from, uint256 amount, address _to, address routerAddr) private view returns (uint256) {
+    function _estimateSwap(address _from, uint256 amount, address _to, address routerAddr) private view whitelist(routerAddr) returns (uint256) {
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
         address fromBridge = tokenBridgeForRouter[_from][routerAddr];
