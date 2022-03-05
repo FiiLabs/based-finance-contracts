@@ -22,6 +22,12 @@ contract BasedTombZap is Ownable {
     // @NATIVE - native token that is not a part of our zap-in LP
     address private NATIVE;
 
+    struct LiquidityPair {
+          uint256 amountA;
+            uint256 amountB;
+            uint256 liquidity;
+    }
+
     mapping(address => mapping(address => address)) private tokenBridgeForRouter;
 
     mapping (address => bool) public useNativeRouter;
@@ -191,12 +197,10 @@ contract BasedTombZap is Ownable {
             uint256 sellAmount = amount.div(2);
             // execute swap
             uint256 otherAmount = _swap(_from, sellAmount, other, address(this), routerAddr);
-            uint256 amountA;
-            uint256 amountB;
-            uint256 liquidity;
-            (amountA , amountB , liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, 0, 0, recipient, block.timestamp);
-            _dustDistribution(amount.sub(sellAmount), otherAmount, amountA, amountB, _from, other);
-            return liquidity;
+            LiquidityPair memory pair;
+            (pair.amountA , pair.amountB , pair.liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, 0, 0, recipient, block.timestamp);
+            _dustDistribution(amount.sub(sellAmount), otherAmount, pair.amountA, pair.amountB, _from, other);
+            return pair.liquidity;
         } else {
             // go through native token for highest liquidity
             uint256 nativeAmount = _swapTokenForNative(_from, amount, address(this), routerAddr);
@@ -231,9 +235,7 @@ contract BasedTombZap is Ownable {
     function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256) {
         require(useNativeRouter[routerAddress], "route not allowed");
         uint256 swapValue = amount.div(2);
-        uint256 amountA;
-        uint256 amountB;
-        uint256 liquidity;
+        LiquidityPair memory pair;
 
         IUniswapV2Router router = IUniswapV2Router(routerAddress);
 
@@ -242,18 +244,18 @@ contract BasedTombZap is Ownable {
             _approveTokenIfNeeded(token0, routerAddress);
             _approveTokenIfNeeded(token1, routerAddress);
 
-            (amountA,amountB, liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, 0, 0, recipient, block.timestamp);
-             _dustDistribution(amount.sub(swapValue), token1Amount, amountA, amountB, token0, token1);
-             return liquidity;
+            (pair.amountA,pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, 0, 0, recipient, block.timestamp);
+             _dustDistribution(amount.sub(swapValue), token1Amount, pair.amountA, pair.amountB, token0, token1);
+             return pair.liquidity;
 
 
         } else {
             uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress);
             _approveTokenIfNeeded(token0, routerAddress);
             _approveTokenIfNeeded(token1, routerAddress);
-            (amountA, amountB, liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), 0, 0, recipient, block.timestamp);
-            _dustDistribution(token0Amount, amount.sub(swapValue), amountA, amountB, token1, token0);
-            return liquidity;
+            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), 0, 0, recipient, block.timestamp);
+            _dustDistribution(token0Amount, amount.sub(swapValue), pair.amountA, pair.amountB, token1, token0);
+            return pair.liquidity;
         }
     }
 
