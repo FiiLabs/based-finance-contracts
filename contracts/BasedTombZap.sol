@@ -192,7 +192,7 @@ contract BasedTombZap is Ownable {
 
     /* ========== Private Functions ========== */
 
-    function _approveTokenIfNeeded(address token, uint256 amount, address router) private whitelist(router) {
+    function _approveTokenIfNeeded(address token, uint256 amount, address router) private {
         if (IERC20(token).allowance(address(this), router) <= amount) {
             IERC20(token).safeApprove(router, IERC20(token).allowance(address(this), router).add(amount));
         }
@@ -231,7 +231,7 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapNativeToLP(address _LP, uint256 amount, address recipient, address routerAddress, uint256 slippage) private whitelist(routerAddress) returns (uint256) {
+    function _swapNativeToLP(address _LP, uint256 amount, address recipient, address routerAddress, uint256 slippage) private returns (uint256) {
         // LP
         IUniswapV2Pair pair = IUniswapV2Pair(_LP);
         address token0 = pair.token0();  // based
@@ -289,7 +289,7 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
+    function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr, uint256 slippage) private returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
@@ -308,7 +308,7 @@ contract BasedTombZap is Ownable {
         return amounts[amounts.length - 1];
     }
 
-    function _swapTokenForNative(address token, uint256 amount, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
+    function _swapTokenForNative(address token, uint256 amount, address recipient, address routerAddr, uint256 slippage) private returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
@@ -328,7 +328,7 @@ contract BasedTombZap is Ownable {
         return amounts[amounts.length - 1];
     }
 
-    function _swap(address _from, uint256 amount, address _to, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
+    function _swap(address _from, uint256 amount, address _to, address recipient, address routerAddr, uint256 slippage) private returns (uint256) {
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
         address fromBridge = tokenBridgeForRouter[_from][routerAddr];
