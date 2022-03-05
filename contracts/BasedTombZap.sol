@@ -23,14 +23,14 @@ contract BasedTombZap is Ownable {
     address private NATIVE;
 
     struct LiquidityPair {
-          uint256 amountA;
-            uint256 amountB;
-            uint256 liquidity;
+        uint256 amountA;
+        uint256 amountB;
+        uint256 liquidity;
     }
 
     mapping(address => mapping(address => address)) private tokenBridgeForRouter;
 
-    mapping (address => bool) public useNativeRouter;
+    mapping(address => bool) public useNativeRouter;
 
     modifier whitelist(address route) {
         require(useNativeRouter[route], "route not allowed");
@@ -122,22 +122,22 @@ contract BasedTombZap is Ownable {
         address token0 = IUniswapV2Pair(_from).token0();
         address token1 = IUniswapV2Pair(_from).token1();
         LiquidityPair memory pair;
-         pair.amountA = _estimateSwap(NATIVE, amount.div(2), token0, routerAddr);
-         pair.amountB = _estimateSwap(NATIVE, amount.div(2), token1, routerAddr);
+        pair.amountA = _estimateSwap(NATIVE, amount.div(2), token0, routerAddr);
+        pair.amountB = _estimateSwap(NATIVE, amount.div(2), token1, routerAddr);
 
         _approveTokenIfNeeded(token0, pair.amountA, routerAddr);
         _approveTokenIfNeeded(token1, pair.amountB, routerAddr);
         // check if either is already native token
-      
-          (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, pair.amountA.sub(pair.amountA.mul(slippage)), pair.amountB.sub(pair.amountB.mul(slippage)), address(this), block.timestamp);
-            if (token0 != NATIVE) {
+
+        (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, pair.amountA.sub(pair.amountA.mul(slippage)), pair.amountB.sub(pair.amountB.mul(slippage)), address(this), block.timestamp);
+        if (token0 != NATIVE) {
             pair.amountA = _swapTokenForNative(token0, pair.amountA, address(this), routerAddr, slippage);
         }
         if (token1 != NATIVE) {
             pair.amountB = _swapTokenForNative(token1, pair.amountB, address(this), routerAddr, slippage);
         }
         IERC20(NATIVE).safeTransfer(_recipient, pair.amountA.add(pair.amountB));
-        
+
     }
     // from an LP token to an ERC20 through specified router
 
@@ -152,9 +152,9 @@ contract BasedTombZap is Ownable {
         // estimate function call, and get the AmountsOut from it
         //we can assign AmountsOut to our local variables..
         LiquidityPair memory pair;
-         pair.amountA = _estimateSwap(NATIVE, amount.div(2), token0, routerAddr);
-         pair.amountB = _estimateSwap(NATIVE, amount.div(2), token1, routerAddr);
-       
+        pair.amountA = _estimateSwap(NATIVE, amount.div(2), token0, routerAddr);
+        pair.amountB = _estimateSwap(NATIVE, amount.div(2), token1, routerAddr);
+
         (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, pair.amountA.sub(pair.amountA.mul(slippage)), pair.amountB.sub(pair.amountB.mul(slippage)), address(this), block.timestamp);
         if (token0 != _to) {
             pair.amountA = _swap(token0, pair.amountA, _to, address(this), routerAddr, slippage);
@@ -188,7 +188,7 @@ contract BasedTombZap is Ownable {
 
     function _swapTokenToLP(address _from, uint256 amount, address _to, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
         // get pairs for desired lp
-        if (_from == IUniswapV2Pair(_to).token0() || _from == IUniswapV2Pair(_to).token1()) { // check if we already have one of the assets
+        if (_from == IUniswapV2Pair(_to).token0() || _from == IUniswapV2Pair(_to).token1()) {// check if we already have one of the assets
             // if so, we're going to sell half of _from for the other token we need
             // figure out which token we need, and approve
             address other = _from == IUniswapV2Pair(_to).token0() ? IUniswapV2Pair(_to).token1() : IUniswapV2Pair(_to).token0();
@@ -198,7 +198,7 @@ contract BasedTombZap is Ownable {
             // execute swap
             uint256 otherAmount = _swap(_from, sellAmount, other, address(this), routerAddr, slippage);
             LiquidityPair memory pair;
-            (pair.amountA , pair.amountB , pair.liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, amount.sub(sellAmount).sub(amount.sub(sellAmount).mul(slippage)) , otherAmount.sub(otherAmount.mul(slippage)), recipient, block.timestamp);
+            (pair.amountA, pair.amountB, pair.liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, amount.sub(sellAmount).sub(amount.sub(sellAmount).mul(slippage)), otherAmount.sub(otherAmount.mul(slippage)), recipient, block.timestamp);
             _dustDistribution(amount.sub(sellAmount), otherAmount, pair.amountA, pair.amountB, _from, other);
             return pair.liquidity;
         } else {
@@ -220,14 +220,14 @@ contract BasedTombZap is Ownable {
     }
 
     function _dustDistribution(uint256 token0, uint256 token1, uint256 amountA, uint256 amountB, address native, address token) private {
-           uint256 nativeDust = token0.sub(amountA);
-           uint256 tokenDust = token1.sub(amountB);
-           if ( nativeDust > 0 ) {
-                IERC20(native).safeTransferFrom(address(this), msg.sender, nativeDust);
-           }
-           if (tokenDust >0) {
-                IERC20(token).safeTransferFrom(address(this), msg.sender, tokenDust);
-           }
+        uint256 nativeDust = token0.sub(amountA);
+        uint256 tokenDust = token1.sub(amountB);
+        if (nativeDust > 0) {
+            IERC20(native).safeTransferFrom(address(this), msg.sender, nativeDust);
+        }
+        if (tokenDust > 0) {
+            IERC20(token).safeTransferFrom(address(this), msg.sender, tokenDust);
+        }
 
     }
 
@@ -244,9 +244,9 @@ contract BasedTombZap is Ownable {
             _approveTokenIfNeeded(token0, amount.div(2), routerAddress);
             _approveTokenIfNeeded(token1, token1Amount, routerAddress);
 
-            (pair.amountA,pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, amount.sub(swapValue).sub(amount.sub(swapValue).mul(slippage)), token1Amount.sub(token1Amount.mul(slippage)), recipient, block.timestamp);
-             _dustDistribution(amount.sub(swapValue), token1Amount, pair.amountA, pair.amountB, token0, token1);
-             return pair.liquidity;
+            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, amount.sub(swapValue).sub(amount.sub(swapValue).mul(slippage)), token1Amount.sub(token1Amount.mul(slippage)), recipient, block.timestamp);
+            _dustDistribution(amount.sub(swapValue), token1Amount, pair.amountA, pair.amountB, token0, token1);
+            return pair.liquidity;
 
 
         } else {
@@ -273,7 +273,7 @@ contract BasedTombZap is Ownable {
             path[0] = NATIVE;
             path[1] = token;
         }
-         uint256 tokenAmt = _estimateSwap(NATIVE, value, token, routerAddr);
+        uint256 tokenAmt = _estimateSwap(NATIVE, value, token, routerAddr);
         uint256[] memory amounts = router.swapExactTokensForTokens(value, tokenAmt.sub(tokenAmt.mul(slippage)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
@@ -292,7 +292,7 @@ contract BasedTombZap is Ownable {
             path[0] = token;
             path[1] = NATIVE;
         }
-       
+
         uint256 tokenAmt = _estimateSwap(token, amount, NATIVE, routerAddr);
         uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmt.sub(tokenAmt.mul(slippage)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
@@ -351,7 +351,7 @@ contract BasedTombZap is Ownable {
             path[2] = _to;
         }
         uint256 tokenAmountEst = _estimateSwap(_from, amount, _to, routerAddr);
-      
+
         uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmountEst.sub(tokenAmountEst.mul(slippage)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
