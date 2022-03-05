@@ -28,6 +28,18 @@ contract BasedTombZap is Ownable {
         uint256 liquidity;
     }
 
+    struct Args {
+        address from;
+        uint256 amount;
+        address to;
+        address routerAddr;
+        address recipient;
+        uint slippage;
+        address lp;
+        address token0;
+        address token1;
+    }
+
     mapping(address => mapping(address => address)) private tokenBridgeForRouter;
 
     mapping(address => bool) public useNativeRouter;
@@ -186,25 +198,36 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapTokenToLP(address _from, uint256 amount, address _to, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
+    function _swapTokenToLP(address _from, uint256 amount, address _to, address recipient, address routerAddr, uint256 slippage) private returns (uint256) {
         // get pairs for desired lp
-        if (_from == IUniswapV2Pair(_to).token0() || _from == IUniswapV2Pair(_to).token1()) {// check if we already have one of the assets
+        Args memory args;
+
+        args.from = _from;
+        args.amount = amount;
+        args.to = _to;
+        args.recipient = recipient;
+        args.routerAddr = routerAddr;
+        args.slippage = slippage;
+
+        if (args.from == IUniswapV2Pair(args.to).token0() || args.from == IUniswapV2Pair(args.to).token1()) {// check if we already have one of the assets
             // if so, we're going to sell half of _from for the other token we need
             // figure out which token we need, and approve
-            address other = _from == IUniswapV2Pair(_to).token0() ? IUniswapV2Pair(_to).token1() : IUniswapV2Pair(_to).token0();
-            _approveTokenIfNeeded(other, amount.div(2), routerAddr);
+            address other = args.from == IUniswapV2Pair(args.to).token0() ? IUniswapV2Pair(args.to).token1() : IUniswapV2Pair(args.to).token0();
+            _approveTokenIfNeeded(other, amount.div(2), args.routerAddr);
             // calculate amount of _from to sell
-            uint256 sellAmount = amount.div(2);
+            uint256 sellAmount = args.amount.div(2);
             // execute swap
-            uint256 otherAmount = _swap(_from, sellAmount, other, address(this), routerAddr, slippage);
+            uint256 otherAmount = _swap(args.from, sellAmount, other, address(this), args.routerAddr, args.slippage);
             LiquidityPair memory pair;
-            (pair.amountA, pair.amountB, pair.liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, amount.sub(sellAmount).sub(amount.sub(sellAmount).mul(slippage)), otherAmount.sub(otherAmount.mul(slippage)), recipient, block.timestamp);
-            _dustDistribution(amount.sub(sellAmount), otherAmount, pair.amountA, pair.amountB, _from, other);
+
+            uint256 differenceA = args.amount.sub(sellAmount);
+            (pair.amountA, pair.amountB, pair.liquidity) = IUniswapV2Router(args.routerAddr).addLiquidity(args.from, other, differenceA, otherAmount, differenceA.sub(differenceA.mul(args.slippage)), otherAmount.sub(otherAmount.mul(args.slippage)), args.recipient, block.timestamp);
+            _dustDistribution(args.amount.sub(sellAmount), otherAmount, pair.amountA, pair.amountB, args.from, other);
             return pair.liquidity;
         } else {
             // go through native token for highest liquidity
-            uint256 nativeAmount = _swapTokenForNative(_from, amount, address(this), routerAddr, slippage);
-            return _swapNativeToLP(_to, nativeAmount, recipient, routerAddr, slippage);
+            uint256 nativeAmount = _swapTokenForNative(args.from, args.amount, address(this), args.routerAddr, args.slippage);
+            return _swapNativeToLP(args.to, nativeAmount, args.recipient, args.routerAddr, args.slippage);
         }
     }
 
@@ -233,28 +256,35 @@ contract BasedTombZap is Ownable {
 
 
     function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient, uint256 slippage) private returns (uint256) {
-        require(useNativeRouter[routerAddress], "route not allowed");
-        uint256 swapValue = amount.div(2);
+        Args memory args;
+        args.token0 = token0;
+        args.token1 = token1;
+        args.amount = amount;
+        args.routerAddr = routerAddress;
+        args.recipient = recipient;
+        args.slippage = slippage;
+        require(useNativeRouter[args.routerAddr], "route not allowed");
+        uint256 swapValue = args.amount.div(2);
         LiquidityPair memory pair;
 
-        IUniswapV2Router router = IUniswapV2Router(routerAddress);
+        IUniswapV2Router router = IUniswapV2Router(args.routerAddr);
 
-        if (token0 == NATIVE) {
-            uint256 token1Amount = _swapNativeForToken(token1, swapValue, address(this), routerAddress, slippage);
-            _approveTokenIfNeeded(token0, amount.div(2), routerAddress);
-            _approveTokenIfNeeded(token1, token1Amount, routerAddress);
+        uint256 differenceA = args.amount.sub(swapValue);
 
-            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, amount.sub(swapValue).sub(amount.sub(swapValue).mul(slippage)), token1Amount.sub(token1Amount.mul(slippage)), recipient, block.timestamp);
-            _dustDistribution(amount.sub(swapValue), token1Amount, pair.amountA, pair.amountB, token0, token1);
+        if (args.token0 == NATIVE) {
+            uint256 token1Amount = _swapNativeForToken(args.token1, swapValue, address(this), args.routerAddr, args.slippage);
+            _approveTokenIfNeeded(args.token0, args.amount.div(2), args.routerAddr);
+            _approveTokenIfNeeded(args.token1, token1Amount, args.routerAddr);
+
+            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(args.token0, args.token1, differenceA, token1Amount, differenceA.sub(differenceA.mul(args.slippage)), token1Amount.sub(token1Amount.mul(args.slippage)), args.recipient, block.timestamp);
+            _dustDistribution(differenceA, token1Amount, pair.amountA, pair.amountB, args.token0, args.token1);
             return pair.liquidity;
-
-
         } else {
-            uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress, slippage);
-            _approveTokenIfNeeded(token0, token0Amount, routerAddress);
-            _approveTokenIfNeeded(token1, amount.div(2), routerAddress);
-            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), token0Amount.sub(token0Amount.mul(slippage)), amount.sub(swapValue).sub(amount.sub(swapValue).mul(slippage)), recipient, block.timestamp);
-            _dustDistribution(token0Amount, amount.sub(swapValue), pair.amountA, pair.amountB, token1, token0);
+            uint256 token0Amount = _swapNativeForToken(args.token0, swapValue, address(this), args.routerAddr, args.slippage);
+            _approveTokenIfNeeded(args.token0, token0Amount, args.routerAddr);
+            _approveTokenIfNeeded(args.token1, args.amount.div(2), args.routerAddr);
+            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(args.token0, args.token1, token0Amount, differenceA, token0Amount.sub(token0Amount.mul(args.slippage)), differenceA.sub(differenceA.mul(args.slippage)), args.recipient, block.timestamp);
+            _dustDistribution(token0Amount, differenceA, pair.amountA, pair.amountB, args.token1, args.token0);
             return pair.liquidity;
         }
     }
