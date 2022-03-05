@@ -54,12 +54,12 @@ contract BasedTombZap is Ownable {
     // @amount - amount of our _from
     // @_to - LP address we are going to get from this zap-in function
 
-    function zapInToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external whitelist(routerAddr) {
+    function zapInToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
         // From an ERC20 to an LP token, through specified router, going through base asset if necessary
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         // we'll need this approval to add liquidity
         _approveTokenIfNeeded(_from, amount, routerAddr);
-        _swapTokenToLP(_from, amount, _to, _recipient, routerAddr);
+        _swapTokenToLP(_from, amount, _to, _recipient, routerAddr, slippage);
     }
 
     function estimateZapInToken(address _from, address _to, address _router, uint256 _amt) public view whitelist(_router) returns (uint256, uint256) {
@@ -86,8 +86,8 @@ contract BasedTombZap is Ownable {
     }
 
     // from Native to an LP token through the specified router
-    function zapIn(address _to, address routerAddr, address _recipient) external payable whitelist(routerAddr) {
-        _swapNativeToLP(_to, msg.value, _recipient, routerAddr);
+    function zapIn(address _to, address routerAddr, address _recipient, uint256 slippage) external payable whitelist(routerAddr) {
+        _swapNativeToLP(_to, msg.value, _recipient, routerAddr, slippage);
     }
 
     function estimateZapIn(address _LP, address _router, uint256 _amt) public view whitelist(_router) returns (uint256, uint256) {
@@ -113,46 +113,49 @@ contract BasedTombZap is Ownable {
         }
     }
     // from an LP token to Native through specified router
-    function zapOut(address _from, uint256 amount, address routerAddr, address _recipient) external whitelist(routerAddr) {
+    function zapOut(address _from, uint256 amount, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
         // take the LP token
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_from, routerAddr);
+        _approveTokenIfNeeded(_from, amount, routerAddr);
 
         // get pairs for LP
         address token0 = IUniswapV2Pair(_from).token0();
         address token1 = IUniswapV2Pair(_from).token1();
-        _approveTokenIfNeeded(token0, routerAddr);
-        _approveTokenIfNeeded(token1, routerAddr);
+        _approveTokenIfNeeded(token0, type(uint256).max, routerAddr);
+        _approveTokenIfNeeded(token1, type(uint256).max, routerAddr);
         // check if either is already native token
-        if (token0 == NATIVE || token1 == NATIVE) {
-            // if so, we only need to swap one, figure out which and how much
-            address token = token0 != NATIVE ? token0 : token1;
-            uint256 amtToken;
-            uint256 amtETH;
-            (amtToken, amtETH) = IUniswapV2Router(routerAddr).removeLiquidityETH(token, amount, 0, 0, address(this), block.timestamp);
-            // swap with msg.sender as recipient, so they already get the Native
-            _swapTokenForNative(token, amtToken, _recipient, routerAddr);
-            // send other half of Native
-            TransferHelper.safeTransferETH(_recipient, amtETH);
-        } else {
+        // if (token0 == NATIVE || token1 == NATIVE) {
+        //     // if so, we only need to swap one, figure out which and how much
+        //     address token = token0 != NATIVE ? token0 : token1;
+        //     uint256 amtToken;
+        //     uint256 amtNative;
+        //     (amtToken, amtNative) = IUniswapV2Router(routerAddr).removeLiquidity(token, amount, 0, 0, address(this), block.timestamp);
+        //     // swap with msg.sender as recipient, so they already get the Native
+        //     _swapTokenForNative(token, amtToken, _recipient, routerAddr);
+        //     // send other half of Native
+        //     TransferHelper.safeTransferETH(_recipient, amtNative);
+        // } else {
             // convert both for Native with msg.sender as recipient
-            uint256 amt0;
-            uint256 amt1;
-            (amt0, amt1) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, 0, 0, address(this), block.timestamp);
-            _swapTokenForNative(token0, amt0, _recipient, routerAddr);
-            _swapTokenForNative(token1, amt1, _recipient, routerAddr);
-        }
+           LiquidityPair memory pair;
+            (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, 0, 0, address(this), block.timestamp);
+            _swapTokenForNative(token0, pair.amountA, _recipient, routerAddr);
+            _swapTokenForNative(token1, pair.amountB, _recipient, routerAddr);
+        // }
     }
     // from an LP token to an ERC20 through specified router
 
-    function zapOutToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) whitelist(routerAddr) external {
+    function zapOutToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient, uint256 slippage) whitelist(routerAddr) external {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_from, routerAddr);
+        _approveTokenIfNeeded(_from, amount, routerAddr);
 
         address token0 = IUniswapV2Pair(_from).token0();
         address token1 = IUniswapV2Pair(_from).token1();
-        _approveTokenIfNeeded(token0, routerAddr);
-        _approveTokenIfNeeded(token1, routerAddr);
+        _approveTokenIfNeeded(token0, type(uint256).max, routerAddr);
+        _approveTokenIfNeeded(token1, type(uint256).max, routerAddr);
+        // estimate function call, and get the AmountsOut from it
+        //we can assign AmountsOut to our local variables..
+
+        
         uint256 amt0;
         uint256 amt1;
         (amt0, amt1) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, 0, 0, address(this), block.timestamp);
@@ -186,7 +189,7 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapTokenToLP(address _from, uint256 amount, address _to, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
+    function _swapTokenToLP(address _from, uint256 amount, address _to, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
         // get pairs for desired lp
         if (_from == IUniswapV2Pair(_to).token0() || _from == IUniswapV2Pair(_to).token1()) { // check if we already have one of the assets
             // if so, we're going to sell half of _from for the other token we need
@@ -198,24 +201,24 @@ contract BasedTombZap is Ownable {
             // execute swap
             uint256 otherAmount = _swap(_from, sellAmount, other, address(this), routerAddr);
             LiquidityPair memory pair;
-            (pair.amountA , pair.amountB , pair.liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, 0, 0, recipient, block.timestamp);
+            (pair.amountA , pair.amountB , pair.liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, amount.sub(sellAmount).sub(amount.sub(sellAmount).mul(slippage)) , otherAmount.sub(otherAmount.mul(slippage)), recipient, block.timestamp);
             _dustDistribution(amount.sub(sellAmount), otherAmount, pair.amountA, pair.amountB, _from, other);
             return pair.liquidity;
         } else {
             // go through native token for highest liquidity
             uint256 nativeAmount = _swapTokenForNative(_from, amount, address(this), routerAddr);
-            return _swapNativeToLP(_to, nativeAmount, recipient, routerAddr);
+            return _swapNativeToLP(_to, nativeAmount, recipient, routerAddr, slippage);
         }
     }
 
-    function _swapNativeToLP(address _LP, uint256 amount, address recipient, address routerAddress) private whitelist(routerAddress) returns (uint256) {
+    function _swapNativeToLP(address _LP, uint256 amount, address recipient, address routerAddress, uint256 slippage) private whitelist(routerAddress) returns (uint256) {
         // LP
         IUniswapV2Pair pair = IUniswapV2Pair(_LP);
         address token0 = pair.token0();  // based
         address token1 = pair.token1();  // tomb
         uint256 liquidity;
 
-        liquidity = _swapNativeToEqualTokensAndProvide(token0, token1, amount, routerAddress, recipient);
+        liquidity = _swapNativeToEqualTokensAndProvide(token0, token1, amount, routerAddress, recipient, slippage);
         return liquidity;
     }
 
@@ -232,7 +235,7 @@ contract BasedTombZap is Ownable {
     }
 
 
-    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256) {
+    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient, uint256 slippage) private returns (uint256) {
         require(useNativeRouter[routerAddress], "route not allowed");
         uint256 swapValue = amount.div(2);
         LiquidityPair memory pair;
@@ -244,7 +247,7 @@ contract BasedTombZap is Ownable {
             _approveTokenIfNeeded(token0, amount.div(2), routerAddress);
             _approveTokenIfNeeded(token1, token1Amount, routerAddress);
 
-            (pair.amountA,pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, 0, 0, recipient, block.timestamp);
+            (pair.amountA,pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, amount.sub(swapValue).sub(amount.sub(swapValue).mul(slippage)), token1Amount.sub(token1Amount.mul(slippage)), recipient, block.timestamp);
              _dustDistribution(amount.sub(swapValue), token1Amount, pair.amountA, pair.amountB, token0, token1);
              return pair.liquidity;
 
@@ -253,7 +256,7 @@ contract BasedTombZap is Ownable {
             uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress);
             _approveTokenIfNeeded(token0, token0Amount, routerAddress);
             _approveTokenIfNeeded(token1, amount.div(2), routerAddress);
-            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), 0, 0, recipient, block.timestamp);
+            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), token0Amount.sub(token0Amount.mul(slippage)), amount.sub(swapValue).sub(amount.sub(swapValue).mul(slippage)), recipient, block.timestamp);
             _dustDistribution(token0Amount, amount.sub(swapValue), pair.amountA, pair.amountB, token1, token0);
             return pair.liquidity;
         }
