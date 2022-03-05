@@ -58,7 +58,7 @@ contract BasedTombZap is Ownable {
         // From an ERC20 to an LP token, through specified router, going through base asset if necessary
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         // we'll need this approval to add liquidity
-        _approveTokenIfNeeded(_from, routerAddr);
+        _approveTokenIfNeeded(_from, amount, routerAddr);
         _swapTokenToLP(_from, amount, _to, _recipient, routerAddr);
     }
 
@@ -167,22 +167,22 @@ contract BasedTombZap is Ownable {
 
     function swapToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external whitelist(routerAddr) {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_from, routerAddr);
+        _approveTokenIfNeeded(_from, amount, routerAddr);
         _swap(_from, amount, _to, _recipient, routerAddr);
     }
 
     function swapToNative(address _from, uint256 amount, address routerAddr, address _recipient) external whitelist(routerAddr) {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_from, routerAddr);
+        _approveTokenIfNeeded(_from, amount, routerAddr);
         _swapTokenForNative(_from, amount, _recipient, routerAddr);
     }
 
 
     /* ========== Private Functions ========== */
 
-    function _approveTokenIfNeeded(address token, address router) private whitelist(router) {
-        if (IERC20(token).allowance(address(this), router) == 0) {
-            IERC20(token).safeApprove(router, type(uint256).max);
+    function _approveTokenIfNeeded(address token, uint256 amount, address router) private whitelist(router) {
+        if (IERC20(token).allowance(address(this), router) <= amount) {
+            IERC20(token).safeApprove(router, IERC20(token).allowance(address(this), router).add(amount));
         }
     }
 
@@ -192,7 +192,7 @@ contract BasedTombZap is Ownable {
             // if so, we're going to sell half of _from for the other token we need
             // figure out which token we need, and approve
             address other = _from == IUniswapV2Pair(_to).token0() ? IUniswapV2Pair(_to).token1() : IUniswapV2Pair(_to).token0();
-            _approveTokenIfNeeded(other, routerAddr);
+            _approveTokenIfNeeded(other, amount.div(2), routerAddr);
             // calculate amount of _from to sell
             uint256 sellAmount = amount.div(2);
             // execute swap
@@ -241,8 +241,8 @@ contract BasedTombZap is Ownable {
 
         if (token0 == NATIVE) {
             uint256 token1Amount = _swapNativeForToken(token1, swapValue, address(this), routerAddress);
-            _approveTokenIfNeeded(token0, routerAddress);
-            _approveTokenIfNeeded(token1, routerAddress);
+            _approveTokenIfNeeded(token0, amount.div(2), routerAddress);
+            _approveTokenIfNeeded(token1, token1Amount, routerAddress);
 
             (pair.amountA,pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, 0, 0, recipient, block.timestamp);
              _dustDistribution(amount.sub(swapValue), token1Amount, pair.amountA, pair.amountB, token0, token1);
@@ -251,8 +251,8 @@ contract BasedTombZap is Ownable {
 
         } else {
             uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress);
-            _approveTokenIfNeeded(token0, routerAddress);
-            _approveTokenIfNeeded(token1, routerAddress);
+            _approveTokenIfNeeded(token0, token0Amount, routerAddress);
+            _approveTokenIfNeeded(token1, amount.div(2), routerAddress);
             (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), 0, 0, recipient, block.timestamp);
             _dustDistribution(token0Amount, amount.sub(swapValue), pair.amountA, pair.amountB, token1, token0);
             return pair.liquidity;
