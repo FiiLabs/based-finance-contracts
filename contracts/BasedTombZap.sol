@@ -191,8 +191,11 @@ contract BasedTombZap is Ownable {
             uint256 sellAmount = amount.div(2);
             // execute swap
             uint256 otherAmount = _swap(_from, sellAmount, other, address(this), routerAddr);
+            uint256 amountA;
+            uint256 amountB;
             uint256 liquidity;
-            ( , , liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, 0, 0, recipient, block.timestamp);
+            (amountA , amountB , liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, 0, 0, recipient, block.timestamp);
+            _dustDistribution(amount.sub(sellAmount), otherAmount, amountA, amountB, _from, other);
             return liquidity;
         } else {
             // go through native token for highest liquidity
@@ -207,26 +210,51 @@ contract BasedTombZap is Ownable {
         address token0 = pair.token0();  // based
         address token1 = pair.token1();  // tomb
         uint256 liquidity;
-        ( , , liquidity) = _swapNativeToEqualTokensAndProvide(token0, token1, amount, routerAddress, recipient);
+      
+        liquidity = _swapNativeToEqualTokensAndProvide(token0, token1, amount, routerAddress, recipient);
         return liquidity;
+    }
+    
+    function _dustDistribution(uint256 token0, uint256 token1, uint256 amountA, uint256 amountB, address native, address token) private {
+           uint256 nativeDust = token0.sub(amountA);
+           uint256 tokenDust = token1.sub(amountB);
+           if ( nativeDust > 0 ) {
+                IERC20(native).safeTransferFrom(address(this), msg.sender, nativeDust);
+           } 
+           if (tokenDust >0) {
+                IERC20(token).safeTransferFrom(address(this), msg.sender, tokenDust);
+           }
+          
     }
 
 
-    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private whitelist(routerAddress) returns (uint256, uint256, uint256) {
+    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private whitelist(routerAddress) returns (uint256) {
         uint256 swapValue = amount.div(2);
+        uint256 amountA;
+        uint256 amountB;
+        uint256 liquidity;
+       
         IUniswapV2Router router = IUniswapV2Router(routerAddress);
 
         if (token0 == NATIVE) {
             uint256 token1Amount = _swapNativeForToken(token1, swapValue, address(this), routerAddress);
             _approveTokenIfNeeded(token0, routerAddress);
             _approveTokenIfNeeded(token1, routerAddress);
-            return router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, 0, 0, recipient, block.timestamp);
+           
+            (amountA,amountB, liquidity) = router.addLiquidity(token0, token1, amount.sub(swapValue), token1Amount, 0, 0, recipient, block.timestamp);
+             _dustDistribution(amount.sub(swapValue), token1Amount, amountA, amountB, token0, token1);
+             return liquidity;
+
+
         } else {
             uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress);
             _approveTokenIfNeeded(token0, routerAddress);
             _approveTokenIfNeeded(token1, routerAddress);
-            return router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), 0, 0, recipient, block.timestamp);
+            (amountA, amountB, liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), 0, 0, recipient, block.timestamp);
+            _dustDistribution(token0Amount, amount.sub(swapValue), amountA, amountB, token1, token0);
+            return liquidity;
         }
+
     }
 
     function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
