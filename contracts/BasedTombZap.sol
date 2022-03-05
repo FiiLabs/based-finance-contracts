@@ -121,26 +121,23 @@ contract BasedTombZap is Ownable {
         // get pairs for LP
         address token0 = IUniswapV2Pair(_from).token0();
         address token1 = IUniswapV2Pair(_from).token1();
-        _approveTokenIfNeeded(token0, type(uint256).max, routerAddr);
-        _approveTokenIfNeeded(token1, type(uint256).max, routerAddr);
+        LiquidityPair memory pair;
+         pair.amountA = _estimateSwap(NATIVE, amount.div(2), token0, routerAddr);
+         pair.amountB = _estimateSwap(NATIVE, amount.div(2), token1, routerAddr);
+
+        _approveTokenIfNeeded(token0, pair.amountA, routerAddr);
+        _approveTokenIfNeeded(token1, pair.amountB, routerAddr);
         // check if either is already native token
-        // if (token0 == NATIVE || token1 == NATIVE) {
-        //     // if so, we only need to swap one, figure out which and how much
-        //     address token = token0 != NATIVE ? token0 : token1;
-        //     uint256 amtToken;
-        //     uint256 amtNative;
-        //     (amtToken, amtNative) = IUniswapV2Router(routerAddr).removeLiquidity(token, amount, 0, 0, address(this), block.timestamp);
-        //     // swap with msg.sender as recipient, so they already get the Native
-        //     _swapTokenForNative(token, amtToken, _recipient, routerAddr);
-        //     // send other half of Native
-        //     TransferHelper.safeTransferETH(_recipient, amtNative);
-        // } else {
-            // convert both for Native with msg.sender as recipient
-           LiquidityPair memory pair;
-            (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, 0, 0, address(this), block.timestamp);
-            _swapTokenForNative(token0, pair.amountA, _recipient, routerAddr);
-            _swapTokenForNative(token1, pair.amountB, _recipient, routerAddr);
-        // }
+      
+          (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, pair.amountA.sub(pair.amountA.mul(slippage)), pair.amountB.sub(pair.amountB.mul(slippage)), address(this), block.timestamp);
+            if (token0 != NATIVE) {
+            pair.amountA = _swapTokenForNative(token0, pair.amountA, address(this), routerAddr, slippage);
+        }
+        if (token1 != NATIVE) {
+            pair.amountB = _swapTokenForNative(token1, pair.amountB, address(this), routerAddr, slippage);
+        }
+        IERC20(NATIVE).safeTransfer(_recipient, pair.amountA.add(pair.amountB));
+        
     }
     // from an LP token to an ERC20 through specified router
 
@@ -154,30 +151,30 @@ contract BasedTombZap is Ownable {
         _approveTokenIfNeeded(token1, type(uint256).max, routerAddr);
         // estimate function call, and get the AmountsOut from it
         //we can assign AmountsOut to our local variables..
-
-        
-        uint256 amt0;
-        uint256 amt1;
-        (amt0, amt1) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, 0, 0, address(this), block.timestamp);
+        LiquidityPair memory pair;
+         pair.amountA = _estimateSwap(NATIVE, amount.div(2), token0, routerAddr);
+         pair.amountB = _estimateSwap(NATIVE, amount.div(2), token1, routerAddr);
+       
+        (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, pair.amountA.sub(pair.amountA.mul(slippage)), pair.amountB.sub(pair.amountB.mul(slippage)), address(this), block.timestamp);
         if (token0 != _to) {
-            amt0 = _swap(token0, amt0, _to, address(this), routerAddr);
+            pair.amountA = _swap(token0, pair.amountA, _to, address(this), routerAddr, slippage);
         }
         if (token1 != _to) {
-            amt1 = _swap(token1, amt1, _to, address(this), routerAddr);
+            pair.amountB = _swap(token1, pair.amountB, _to, address(this), routerAddr, slippage);
         }
-        IERC20(_to).safeTransfer(_recipient, amt0.add(amt1));
+        IERC20(_to).safeTransfer(_recipient, pair.amountA.add(pair.amountB));
     }
 
-    function swapToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient) external whitelist(routerAddr) {
+    function swapToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, amount, routerAddr);
-        _swap(_from, amount, _to, _recipient, routerAddr);
+        _swap(_from, amount, _to, _recipient, routerAddr, slippage);
     }
 
-    function swapToNative(address _from, uint256 amount, address routerAddr, address _recipient) external whitelist(routerAddr) {
+    function swapToNative(address _from, uint256 amount, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, amount, routerAddr);
-        _swapTokenForNative(_from, amount, _recipient, routerAddr);
+        _swapTokenForNative(_from, amount, _recipient, routerAddr, slippage);
     }
 
 
@@ -199,14 +196,14 @@ contract BasedTombZap is Ownable {
             // calculate amount of _from to sell
             uint256 sellAmount = amount.div(2);
             // execute swap
-            uint256 otherAmount = _swap(_from, sellAmount, other, address(this), routerAddr);
+            uint256 otherAmount = _swap(_from, sellAmount, other, address(this), routerAddr, slippage);
             LiquidityPair memory pair;
             (pair.amountA , pair.amountB , pair.liquidity) = IUniswapV2Router(routerAddr).addLiquidity(_from, other, amount.sub(sellAmount), otherAmount, amount.sub(sellAmount).sub(amount.sub(sellAmount).mul(slippage)) , otherAmount.sub(otherAmount.mul(slippage)), recipient, block.timestamp);
             _dustDistribution(amount.sub(sellAmount), otherAmount, pair.amountA, pair.amountB, _from, other);
             return pair.liquidity;
         } else {
             // go through native token for highest liquidity
-            uint256 nativeAmount = _swapTokenForNative(_from, amount, address(this), routerAddr);
+            uint256 nativeAmount = _swapTokenForNative(_from, amount, address(this), routerAddr, slippage);
             return _swapNativeToLP(_to, nativeAmount, recipient, routerAddr, slippage);
         }
     }
@@ -243,7 +240,7 @@ contract BasedTombZap is Ownable {
         IUniswapV2Router router = IUniswapV2Router(routerAddress);
 
         if (token0 == NATIVE) {
-            uint256 token1Amount = _swapNativeForToken(token1, swapValue, address(this), routerAddress);
+            uint256 token1Amount = _swapNativeForToken(token1, swapValue, address(this), routerAddress, slippage);
             _approveTokenIfNeeded(token0, amount.div(2), routerAddress);
             _approveTokenIfNeeded(token1, token1Amount, routerAddress);
 
@@ -253,7 +250,7 @@ contract BasedTombZap is Ownable {
 
 
         } else {
-            uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress);
+            uint256 token0Amount = _swapNativeForToken(token0, swapValue, address(this), routerAddress, slippage);
             _approveTokenIfNeeded(token0, token0Amount, routerAddress);
             _approveTokenIfNeeded(token1, amount.div(2), routerAddress);
             (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(token0, token1, token0Amount, amount.sub(swapValue), token0Amount.sub(token0Amount.mul(slippage)), amount.sub(swapValue).sub(amount.sub(swapValue).mul(slippage)), recipient, block.timestamp);
@@ -262,7 +259,7 @@ contract BasedTombZap is Ownable {
         }
     }
 
-    function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
+    function _swapNativeForToken(address token, uint256 value, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
@@ -276,12 +273,12 @@ contract BasedTombZap is Ownable {
             path[0] = NATIVE;
             path[1] = token;
         }
-
-        uint256[] memory amounts = router.swapExactTokensForTokens(value, 0, path, recipient, block.timestamp);
+         uint256 tokenAmt = _estimateSwap(NATIVE, value, token, routerAddr);
+        uint256[] memory amounts = router.swapExactTokensForTokens(value, tokenAmt.sub(tokenAmt.mul(slippage)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
 
-    function _swapTokenForNative(address token, uint256 amount, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
+    function _swapTokenForNative(address token, uint256 amount, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
         address[] memory path;
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
@@ -295,12 +292,13 @@ contract BasedTombZap is Ownable {
             path[0] = token;
             path[1] = NATIVE;
         }
-
-        uint256[] memory amounts = router.swapExactTokensForTokens(amount, 0, path, recipient, block.timestamp);
+       
+        uint256 tokenAmt = _estimateSwap(token, amount, NATIVE, routerAddr);
+        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmt.sub(tokenAmt.mul(slippage)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
 
-    function _swap(address _from, uint256 amount, address _to, address recipient, address routerAddr) private whitelist(routerAddr) returns (uint256) {
+    function _swap(address _from, uint256 amount, address _to, address recipient, address routerAddr, uint256 slippage) private whitelist(routerAddr) returns (uint256) {
         IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
         address fromBridge = tokenBridgeForRouter[_from][routerAddr];
@@ -352,8 +350,9 @@ contract BasedTombZap is Ownable {
             path[1] = NATIVE;
             path[2] = _to;
         }
-
-        uint256[] memory amounts = router.swapExactTokensForTokens(amount, 0, path, recipient, block.timestamp);
+        uint256 tokenAmountEst = _estimateSwap(_from, amount, _to, routerAddr);
+      
+        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmountEst.sub(tokenAmountEst.mul(slippage)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
 
