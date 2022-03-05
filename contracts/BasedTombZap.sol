@@ -228,7 +228,7 @@ contract BasedTombZap is Ownable {
     }
 
 
-    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256, uint256, uint256) {
+    function _swapNativeToEqualTokensAndProvide(address token0, address token1, uint256 amount, address routerAddress, address recipient) private returns (uint256) {
         require(useNativeRouter[routerAddress], "route not allowed");
         uint256 swapValue = amount.div(2);
         uint256 amountA;
