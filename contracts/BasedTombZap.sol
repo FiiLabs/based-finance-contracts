@@ -167,7 +167,7 @@ contract BasedTombZap is Ownable {
         pair.amountA = _estimateSwap(NATIVE, amount.div(2), token0, routerAddr);
         pair.amountB = _estimateSwap(NATIVE, amount.div(2), token1, routerAddr);
 
-        (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, pair.amountA.sub(pair.amountA.mul(slippage)), pair.amountB.sub(pair.amountB.mul(slippage)), address(this), block.timestamp);
+        (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, pair.amountA.sub(pair.amountA.mul(slippage).div(10000)), pair.amountB.sub(pair.amountB.mul(slippage).div(10000)), address(this), block.timestamp);
         if (token0 != _to) {
             pair.amountA = _swap(token0, pair.amountA, _to, address(this), routerAddr, slippage);
         }
@@ -221,7 +221,7 @@ contract BasedTombZap is Ownable {
             LiquidityPair memory pair;
 
             uint256 differenceA = args.amount.sub(sellAmount);
-            (pair.amountA, pair.amountB, pair.liquidity) = IUniswapV2Router(args.routerAddr).addLiquidity(args.from, other, differenceA, otherAmount, differenceA.sub(differenceA.mul(args.slippage)), otherAmount.sub(otherAmount.mul(args.slippage)), args.recipient, block.timestamp);
+            (pair.amountA, pair.amountB, pair.liquidity) = IUniswapV2Router(args.routerAddr).addLiquidity(args.from, other, differenceA, otherAmount, differenceA.sub(differenceA.mul(args.slippage).div(10000)), otherAmount.sub(otherAmount.mul(args.slippage).div(10000)), args.recipient, block.timestamp);
             _dustDistribution(args.amount.sub(sellAmount), otherAmount, pair.amountA, pair.amountB, args.from, other);
             return pair.liquidity;
         } else {
@@ -276,14 +276,14 @@ contract BasedTombZap is Ownable {
             _approveTokenIfNeeded(args.token0, args.amount.div(2), args.routerAddr);
             _approveTokenIfNeeded(args.token1, token1Amount, args.routerAddr);
 
-            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(args.token0, args.token1, differenceA, token1Amount, differenceA.sub(differenceA.mul(args.slippage)), token1Amount.sub(token1Amount.mul(args.slippage)), args.recipient, block.timestamp);
+            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(args.token0, args.token1, differenceA, token1Amount, differenceA.sub(differenceA.mul(args.slippage).div(10000)), token1Amount.sub(token1Amount.mul(args.slippage)), args.recipient, block.timestamp);
             _dustDistribution(differenceA, token1Amount, pair.amountA, pair.amountB, args.token0, args.token1);
             return pair.liquidity;
         } else {
             uint256 token0Amount = _swapNativeForToken(args.token0, swapValue, address(this), args.routerAddr, args.slippage);
             _approveTokenIfNeeded(args.token0, token0Amount, args.routerAddr);
             _approveTokenIfNeeded(args.token1, args.amount.div(2), args.routerAddr);
-            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(args.token0, args.token1, token0Amount, differenceA, token0Amount.sub(token0Amount.mul(args.slippage)), differenceA.sub(differenceA.mul(args.slippage)), args.recipient, block.timestamp);
+            (pair.amountA, pair.amountB, pair.liquidity) = router.addLiquidity(args.token0, args.token1, token0Amount, differenceA, token0Amount.sub(token0Amount.mul(args.slippage).div(10000)), differenceA.sub(differenceA.mul(args.slippage).div(10000)), args.recipient, block.timestamp);
             _dustDistribution(token0Amount, differenceA, pair.amountA, pair.amountB, args.token1, args.token0);
             return pair.liquidity;
         }
@@ -304,7 +304,7 @@ contract BasedTombZap is Ownable {
             path[1] = token;
         }
         uint256 tokenAmt = _estimateSwap(NATIVE, value, token, routerAddr);
-        uint256[] memory amounts = router.swapExactTokensForTokens(value, tokenAmt.sub(tokenAmt.mul(slippage)), path, recipient, block.timestamp);
+        uint256[] memory amounts = router.swapExactTokensForTokens(value, tokenAmt.sub(tokenAmt.mul(slippage).div(10000)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
 
@@ -324,7 +324,7 @@ contract BasedTombZap is Ownable {
         }
 
         uint256 tokenAmt = _estimateSwap(token, amount, NATIVE, routerAddr);
-        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmt.sub(tokenAmt.mul(slippage)), path, recipient, block.timestamp);
+        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmt.sub(tokenAmt.mul(slippage).div(10000)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
 
@@ -382,7 +382,7 @@ contract BasedTombZap is Ownable {
         }
         uint256 tokenAmountEst = _estimateSwap(_from, amount, _to, routerAddr);
 
-        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmountEst.sub(tokenAmountEst.mul(slippage)), path, recipient, block.timestamp);
+        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmountEst.sub(tokenAmountEst.mul(slippage).div(10000)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
 
