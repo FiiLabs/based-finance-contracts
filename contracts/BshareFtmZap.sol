@@ -24,22 +24,22 @@ contract BshareFtmZap is Ownable {
     address private NATIVE;
 
     struct LiquidityPair {
-        uint256 amountA;
-        uint256 amountB;
-        uint256 liquidity;
+        address _token0;
+        address _token1;
+        uint256 _amountToken0;
+        uint256 _amountToken1;
+        uint256 _liqTokenAmt;
     }
 
     struct FunctionArgs {
+        address _LP;
         address _from;
         uint256 _amount;
         address _to;
         address _recipient;
         address _routerAddr;
         uint256 _slippage;
-        address _LP;
-        address _token0;
-        address _token1;
-        uint256 _otherAmount;
+        uint256 _otherAmt;
         address _token;
         uint256 _swapValue;
     }
@@ -66,122 +66,130 @@ contract BshareFtmZap is Ownable {
         return NATIVE;
     }
 
-    // @_from - Token we want to throw in
+    // @in - Token we want to throw in
     // @amount - amount of our _from
-    // @_to - LP address we are going to get from this zap-in function
+    // @out - LP address we are going to get from this zap-in function
 
-    function zapInToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
+    function zapInToken(address in, uint256 amount, address out, address routerAddr, address recipient, uint256 slippage) external whitelist(routerAddr) {
         // From an ERC20 to an LP token, through specified router, going through base asset if necessary
-        IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(in).safeTransferFrom(msg.sender, address(this), amount);
         // we'll need this approval to add liquidity
-        _approveTokenIfNeeded(_from, routerAddr);
-        _swapTokenToLP(_from, amount, _to, _recipient, routerAddr);
+        _approveTokenIfNeeded(in, routerAddr);
+        _swapTokenToLP(in, amount, out, recipient, routerAddr);
     }
 
-    function estimateZapInToken(address _from, address _to, address _router, uint256 _amt) public view whitelist(_router) returns (uint256, uint256) {
+    function estimateZapInToken(address in, address out, address router, uint256 amount) public view whitelist(router) returns (uint256, uint256) {
         // get pairs for desired lp
         // check if we already have one of the assets
-        if (_from == IUniswapV2Pair(_to).token0() || _from == IUniswapV2Pair(_to).token1()) {
-            // if so, we're going to sell half of _from for the other token we need
+        if (in == IUniswapV2Pair(out).token0() || in == IUniswapV2Pair(out).token1()) {
+            // if so, we're going to sell half of in for the other token we need
             // figure out which token we need, and approve
-            address other = _from == IUniswapV2Pair(_to).token0() ? IUniswapV2Pair(_to).token1() : IUniswapV2Pair(_to).token0();
-            // calculate amount of _from to sell
-            uint256 sellAmount = _amt.div(2);
+            address other = in == IUniswapV2Pair(out).token0() ? IUniswapV2Pair(out).token1() : IUniswapV2Pair(out).token0();
+            // calculate amount of in to sell
+            uint256 sellAmount = amount.div(2);
             // calculate amount of other token for potential lp
-            uint256 otherAmount = _estimateSwap(_from, sellAmount, other, _router);
-            if (_from == IUniswapV2Pair(_to).token0()) {
+            uint256 otherAmount = _estimateSwap(in, sellAmount, other, router);
+            if (in == IUniswapV2Pair(out).token0()) {
                 return (sellAmount, otherAmount);
             } else {
                 return (otherAmount, sellAmount);
             }
         } else {
             // go through native token, that's not in our LP, for highest liquidity
-            uint256 nativeAmount = _from == NATIVE ? _amt : _estimateSwap(_from, _amt, NATIVE, _router);
-            return estimateZapIn(_to, _router, nativeAmount);
+            uint256 nativeAmount = in == NATIVE ? amount : _estimateSwap(in, amount, NATIVE, router);
+            return estimateZapIn(out, router, nativeAmount);
         }
     }
 
-    function estimateZapIn(address _LP, address _router, uint256 _amt) public view whitelist(_router) returns (uint256, uint256) {
+    function estimateZapIn(address LP, address router, uint256 amount) public view whitelist(router) returns (uint256, uint256) {
+        uint256 zapAmount = amount.div(2);
 
-        IUniswapV2Pair pair = IUniswapV2Pair(_LP);
+        IUniswapV2Pair pair = IUniswapV2Pair(LP);
         address token0 = pair.token0();
         address token1 = pair.token1();
 
         if (token0 == NATIVE || token1 == NATIVE) {
             address token = token0 == NATIVE ? token1 : token0;
-            uint256 tokenAmt = _estimateSwap(NATIVE, zapAmt, token, _router);
+            uint256 tokenAmount = _estimateSwap(NATIVE, zapAmount, token, router);
             if (token0 == NATIVE) {
-                return (zapAmt, tokenAmt);
+                return (zapAmount, tokenAmount);
             } else {
-                return (tokenAmt, zapAmt);
+                return (tokenAmount, zapAmount);
             }
         } else {
-            uint256 token0Amt = _estimateSwap(NATIVE, zapAmt, token0, _router);
-            uint256 token1Amt = _estimateSwap(NATIVE, zapAmt, token1, _router);
+            uint256 amountToken0 = _estimateSwap(NATIVE, zapAmount, token0, router);
+            uint256 amountToken1 = _estimateSwap(NATIVE, zapAmount, token1, router);
 
-            return (token0Amt, token1Amt);
+            return (amountToken0, amountToken1);
         }
     }
+
     // from Native to an LP token through the specified router
-    function zapIn(address _to, address routerAddr, address _recipient) external payable {
-        _swapNativeToLP(_to, msg.value, _recipient, routerAddr);
+    function zapIn(address out, address routerAddr, address recipient) external payable {
+        _swapNativeToLP(out, msg.value, recipient, routerAddr);
     }
 
     // from an LP token to Native through specified router
-    function zapOut(address _from, uint256 amount, address routerAddr, address _recipient, uint256 minAmountToken0, uint256 minAmountToken1, uint256 slippage) external whitelist(routerAddr) {
+    // @in - LP we want to throw in
+    // @amount - amount of our LP
+    function zapOutToNative(address in, uint256 amount, address routerAddr, address recipient, uint256 minAmountToken0, uint256 minAmountToken1, uint256 slippage) external whitelist(routerAddr) {
         // take the LP token
-        IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_from, routerAddr);
+        IERC20(in).safeTransferFrom(msg.sender, address(this), amount);
+        _approveTokenIfNeeded(in, routerAddr);
 
         LiquidityPair memory pair;
-        // get pairs for LP
-        address token0 = IUniswapV2Pair(_from).token0();
-        address token1 = IUniswapV2Pair(_from).token1();
-        _approveTokenIfNeeded(token0, routerAddr);
-        _approveTokenIfNeeded(token1, routerAddr);
 
-        (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, minAmountToken0.sub(minAmountToken0.mul(slippage)), minAmountToken1.sub(minAmountToken1.mul(slippage)), address(this), block.timestamp);
-        if (token0 != NATIVE) {
-            pair.amountA = _swapTokenForNative(token0, pair.amountA, address(this), routerAddr, slippage);
+        // get pairs for LP
+        pair._token0 = IUniswapV2Pair(in).token0();
+        pair._token1 = IUniswapV2Pair(in).token1();
+        _approveTokenIfNeeded(pair._token0, routerAddr);
+        _approveTokenIfNeeded(pair._token1, routerAddr);
+
+        (pair._amountToken0, pair._amountToken1) = IUniswapV2Router(routerAddr).removeLiquidity(pair._token0, pair._token1, amount, minAmountToken0.sub(minAmountToken0.mul(slippage).div(10000)), minAmountToken1.sub(minAmountToken1.mul(slippage).div(10000)), address(this), block.timestamp);
+        if (pair._token0 != NATIVE) {
+            pair._amountToken0 = _swapTokenForNative(pair._token0, pair._amountToken0, address(this), routerAddr, slippage);
         }
-        if (token1 != NATIVE) {
-            pair.amountB = _swapTokenForNative(token1, pair.amountB, address(this), routerAddr, slippage);
+        if (pair._token1 != NATIVE) {
+            pair._amountToken1 = _swapTokenForNative(pair._token1, pair._amountToken1, address(this), routerAddr, slippage);
         }
-        IERC20(NATIVE).safeTransfer(_recipient, pair.amountA.add(pair.amountB));
+        IERC20(NATIVE).safeTransfer(recipient, pair._amountToken0.add(pair._amountToken1));
 
     }
     // from an LP token to an ERC20 through specified router
 
-    function zapOutToken(address _LP, uint256 amount, address _to, address routerAddr, address _recipient, uint256 minAmountToken0, uint256 minAmountToken1, uint256 slippage) whitelist(routerAddr) external {
+    // from an LP token to Native through specified router
+    // @in - LP we want to throw in
+    // @amount - amount of our LP
+    // @out - token we want to get
+    function zapOutToToken(address in, uint256 amount, address out, address routerAddr, address recipient, uint256 minAmountToken0, uint256 minAmountToken1, uint256 slippage) whitelist(routerAddr) external {
+
         FunctionArgs memory args;
+        LiquidityPair memory pair;
 
         args._amount = amount;
-        args._to = _to;
-        args._recipient = _recipient;
+        args._out = out;
+        args._recipient = recipient;
         args._routerAddr = routerAddr;
         args._slippage = slippage;
-        args._swapValue = args._amount.div(2);
-        args._LP = _LP;
+        //args._swapValue = args._amount.div(2);
+        args._in = in;
 
-        IERC20(args._LP).safeTransferFrom(msg.sender, address(this), args._amount);
-        _approveTokenIfNeeded(args._LP, args._amount, args._routerAddr);
+        IERC20(args._in).safeTransferFrom(msg.sender, address(this), args._amount);
+        _approveTokenIfNeeded(args._in, args._amount, args._routerAddr);
 
-        args._token0 = IUniswapV2Pair(args._LP).token0();
-        args._token1 = IUniswapV2Pair(args._LP).token1();
-        _approveTokenIfNeeded(args._token0, minAmountToken0, args._routerAddr);
-        _approveTokenIfNeeded(args._token1, minAmountToken1, args._routerAddr);
-        // estimate function call, and get the AmountsOut from it
-        //we can assign AmountsOut to our local variables..
-        LiquidityPair memory pair;
-        //uint256 estimationOfTokensAfterRemoveLiquidity = estimateZapOutToken(_LP, _to, routerAddr, amount, minAmountToken0, minAmountToken1, slippage );
-        (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(args._token0, args._token1, args._amount, minAmountToken0.sub(minAmountToken0.mul(args._slippage).div(10000)), minAmountToken1.sub(minAmountToken1.mul(args._slippage).div(10000)), address(this), block.timestamp);
-        if (args._token0 != _to) {
-            pair.amountA = _swap(args._token0, pair.amountA, args._to, address(this), args._routerAddr, args._slippage);
+        pair._token0 = IUniswapV2Pair(args._in).token0();
+        pair._token1 = IUniswapV2Pair(args._in).token1();
+        _approveTokenIfNeeded(pair._token0, minAmountToken0, args._routerAddr);
+        _approveTokenIfNeeded(pair._token1, minAmountToken1, args._routerAddr);
+
+        (pair._amountToken0, pair._amountToken1) = IUniswapV2Router(args._routerAddr).removeLiquidity(pair._token0, pair._token1, args._amount, minAmountToken0.sub(minAmountToken0.mul(args._slippage).div(10000)), minAmountToken1.sub(minAmountToken1.mul(args._slippage).div(10000)), address(this), block.timestamp);
+        if (pair._token0 != args._out) {
+            pair._amountToken0 = _swap(pair._token0, pair._amountToken0, args._out, address(this), args._routerAddr, args._slippage);
         }
-        if (args._token1 != args._to) {
-            pair.amountB = _swap(args._token1, pair.amountB, args._to, address(this), args._routerAddr, args._slippage);
+        if (pair._token1 != args._out) {
+            pair._amountToken1 = _swap(pair._token1, pair._amountToken1, args._out, address(this), args._routerAddr, args._slippage);
         }
-        IERC20(args._to).safeTransfer(args._recipient, pair.amountA.add(pair.amountB));
+        IERC20(args._out).safeTransfer(args._recipient, pair._amountToken0.add(pair._amountToken1));
     }
 
     function swapToken(address _from, uint256 amount, address _to, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
