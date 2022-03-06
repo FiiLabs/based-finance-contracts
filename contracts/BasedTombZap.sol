@@ -133,15 +133,12 @@ contract BasedTombZap is Ownable {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from, amount, routerAddr);
 
+        LiquidityPair memory pair;
         // get pairs for LP
         address token0 = IUniswapV2Pair(_from).token0();
         address token1 = IUniswapV2Pair(_from).token1();
-        LiquidityPair memory pair;
-
-
         _approveTokenIfNeeded(token0, minAmountToken0, routerAddr);
         _approveTokenIfNeeded(token1, minAmountToken1, routerAddr);
-        // check if either is already native token
 
         (pair.amountA, pair.amountB) = IUniswapV2Router(routerAddr).removeLiquidity(token0, token1, amount, minAmountToken0.sub(minAmountToken0.mul(slippage)), minAmountToken1.sub(minAmountToken1.mul(slippage)), address(this), block.timestamp);
         if (token0 != NATIVE) {
@@ -447,6 +444,7 @@ contract BasedTombZap is Ownable {
         uint256[] memory amounts = router.getAmountsOut(amount, path);
         return amounts[amounts.length - 1];
     }
+
     function estimateZapOutToken(address _fromLp, address _to, address _router, uint256 minAmountToken0, uint256 minAmountToken1 ) public view whitelist(_router) returns (uint256) {
         address token0 = IUniswapV2Pair(_fromLp).token0();
         address token1 = IUniswapV2Pair(_fromLp).token1();
