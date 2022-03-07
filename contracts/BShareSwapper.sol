@@ -6,7 +6,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./interfaces/IOracle.sol";
 import "./owner/Operator.sol";
+import "./interfaces/ITreasury.sol";
 
 contract BShareSwapper is Operator {
     using SafeERC20 for IERC20;
@@ -43,13 +45,30 @@ contract BShareSwapper is Operator {
         bshareSpookyLpPair = _bshareSpookyLpPair;
         daoAddress = _daoAddress;
     }
+   
 
-
-    modifier isSwappable() {
-        //TODO: What is a good number here?
-        require(based.totalSupply() >= 60 ether, "ChipSwapMechanismV2.isSwappable(): Insufficient supply.");
-        _;
+    function getBasedPrice() public view returns (uint256 basedPrice) {
+        try IOracle(basedOracle).consult(based, 1e18) returns (uint144 price) {
+            return uint256(price);
+        } catch {
+            revert("Treasury: failed to consult BASED price from the oracle");
+        }
     }
+    function getBsharePrice() public view returns (uint256 bsharePrice) {
+        try IOracle(bshareOracle).consult(bshare, 1e18) returns (uint144 price) {
+            return uint256(price);
+        } catch {
+            revert("Treasury: failed to consult BSHARE price from the oracle");
+        }
+    }
+
+    function getRedeemableBonds() public view returns (uint256 redeemableBonds) {
+        try IOracle(ITreasury).getRedeemableBonds() returns (uint256) {
+        } catch {
+            revert("Treasury: failed to consult BSHARE price from the oracle");
+        }
+    }
+
 
     function estimateAmountOfBShare(uint256 _bbondAmount) external view returns (uint256) {
         uint256 bshareAmountPerBased = getBShareAmountPerBased();
@@ -57,13 +76,20 @@ contract BShareSwapper is Operator {
     }
 
     function swapBBondToBShare(uint256 _bbondAmount) external {
+      
         require(getBBondBalance(msg.sender) >= _bbondAmount, "Not enough BBond in wallet");
+        // check if redeeamable bonds are > _bbondAmount
+        try  IOracle(ITreasury).getRedeemableBonds() returns (uint256) {
+        } catch {
+            revert("Treasury: failed to consult BSHARE price from the oracle");
+        }
+       // send our bbond to treasury(call redeem bonds in treasury)
+       // we receive back based from treasury
+       // swap based to bshare and send back to user
+        //require(getBShareBalance() >= bshareAmount, "Not enough BShare.");
 
-        uint256 bshareAmountPerBased = getBShareAmountPerBased();
-        uint256 bshareAmount = _bbondAmount.mul(bshareAmountPerBased).div(1e18);
-        require(getBShareBalance() >= bshareAmount, "Not enough BShare.");
-
-        bbond.safeTransferFrom(msg.sender, daoAddress, _bbondAmount);
+       uint256 bshareAmount = this.estimateAmountOfBShare(_bbondAmount);
+       // bbond.safeTransferFrom(msg.sender, daoAddress, _bbondAmount);
         bshare.safeTransfer(msg.sender, bshareAmount);
 
         emit BBondSwapPerformed(msg.sender, _bbondAmount, bshareAmount);
@@ -81,30 +107,10 @@ contract BShareSwapper is Operator {
     function getBBondBalance(address _user) public view returns (uint256) {
         return bbond.balanceOf(_user);
     }
-
-    function getBasedPrice() public view returns (uint256) {
-        return IERC20(wftmAddress).balanceOf(basedSpookyLpPair)
-        .mul(1e18)
-        .div(based.balanceOf(basedSpookyLpPair));
-    }
-
-    function getBSharePrice() public view returns (uint256) {
-        return IERC20(wftmAddress).balanceOf(bshareSpookyLpPair)
-        .mul(1e18)
-        .div(bshare.balanceOf(bshareSpookyLpPair));
-    }
-
+    
     function getBShareAmountPerBased() public view returns (uint256) {
-        uint256 basedPrice = IERC20(wftmAddress).balanceOf(basedSpookyLpPair)
-        .mul(1e18)
-        .div(based.balanceOf(basedSpookyLpPair));
-
-        uint256 bsharePrice =
-        IERC20(wftmAddress).balanceOf(bshareSpookyLpPair)
-        .mul(1e18)
-        .div(bshare.balanceOf(bshareSpookyLpPair));
-
-
+        uint256 basedPrice = getBasedPrice();
+        uint256 bsharePrice = getBsharePrice();
         return basedPrice.mul(1e18).div(bsharePrice);
     }
 
