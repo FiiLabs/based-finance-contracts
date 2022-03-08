@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BshareFtmZap is Ownable {
+contract Zapper is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -218,7 +218,7 @@ contract BshareFtmZap is Ownable {
 
     function _approveTokenIfNeeded(address token, uint256 amount, address router) private {
         if (IERC20(token).allowance(address(this), router) <= amount) {
-            IERC20(token).safeApprove(router, IERC20(token).allowance(address(this), router).add(amount));
+            IERC20(token).safeApprove(router, amount);
         }
     }
      // @in - token we want to throw in
