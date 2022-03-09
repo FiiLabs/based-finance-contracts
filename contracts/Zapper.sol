@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract BshareFtmZap is Ownable {
+contract Zapper is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -74,7 +74,7 @@ contract BshareFtmZap is Ownable {
         // From an ERC20 to an LP token, through specified router, going through base asset if necessary
         IERC20(_in).safeTransferFrom(msg.sender, address(this), amount);
         // we'll need this approval to add liquidity
-        _approveTokenIfNeeded(_in, amount, routerAddr);
+        _approveTokenIfNeeded(_in, routerAddr);
         _swapTokenToLP(_in, amount, out, recipient, routerAddr, slippage);
     }
     // @_in - Token we want to throw in
@@ -131,7 +131,7 @@ contract BshareFtmZap is Ownable {
     // @ out - LP we want to get out of this
     function nativeZapIn(uint256 amount, address out, address routerAddr, address recipient, uint256 slippage) external payable {
          IERC20(NATIVE).safeTransferFrom(msg.sender, address(this), amount);
-         _approveTokenIfNeeded(NATIVE, amount, routerAddr);
+         _approveTokenIfNeeded(NATIVE, routerAddr);
         _swapNativeToLP(out, amount, recipient, routerAddr, slippage);
     }
 
@@ -141,15 +141,15 @@ contract BshareFtmZap is Ownable {
     function zapOutToNative(address _in, uint256 amount, address routerAddr, address recipient, uint256 minAmountToken0, uint256 minAmountToken1, uint256 slippage) external whitelist(routerAddr) {
         // take the LP token
         IERC20(_in).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_in,amount, routerAddr);
+        _approveTokenIfNeeded(_in, routerAddr);
 
         LiquidityPair memory pair;
 
         // get pairs for LP
         pair._token0 = IUniswapV2Pair(_in).token0();
         pair._token1 = IUniswapV2Pair(_in).token1();
-        _approveTokenIfNeeded(pair._token0, minAmountToken0, routerAddr);
-        _approveTokenIfNeeded(pair._token1, minAmountToken1, routerAddr);
+        _approveTokenIfNeeded(pair._token0, routerAddr);
+        _approveTokenIfNeeded(pair._token1, routerAddr);
 
         (pair._amountToken0, pair._amountToken1) = IUniswapV2Router(routerAddr).removeLiquidity(pair._token0, pair._token1, amount, minAmountToken0.sub(minAmountToken0.mul(slippage).div(10000)), minAmountToken1.sub(minAmountToken1.mul(slippage).div(10000)), address(this), block.timestamp);
         if (pair._token0 != NATIVE) {
@@ -180,12 +180,13 @@ contract BshareFtmZap is Ownable {
         args._in = _in;
 
         IERC20(args._in).safeTransferFrom(msg.sender, address(this), args._amount);
-        _approveTokenIfNeeded(args._in, args._amount, args._routerAddr);
+        _approveTokenIfNeeded(args._in, args._routerAddr);
 
         pair._token0 = IUniswapV2Pair(args._in).token0();
         pair._token1 = IUniswapV2Pair(args._in).token1();
-        _approveTokenIfNeeded(pair._token0, minAmountToken0, args._routerAddr);
-        _approveTokenIfNeeded(pair._token1, minAmountToken1, args._routerAddr);
+
+        _approveTokenIfNeeded(pair._token0, args._routerAddr);
+        _approveTokenIfNeeded(pair._token1, args._routerAddr);
 
         (pair._amountToken0, pair._amountToken1) = IUniswapV2Router(args._routerAddr).removeLiquidity(pair._token0, pair._token1, args._amount, minAmountToken0.sub(minAmountToken0.mul(args._slippage).div(10000)), minAmountToken1.sub(minAmountToken1.mul(args._slippage).div(10000)), address(this), block.timestamp);
         if (pair._token0 != args._out) {
@@ -201,7 +202,7 @@ contract BshareFtmZap is Ownable {
     // @out - token we want to get
     function swapToken(address _in, uint256 amount, address out, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
         IERC20(_in).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_in, amount, routerAddr);
+        _approveTokenIfNeeded(_in, routerAddr);
         _swap(_in, amount, out, _recipient, routerAddr, slippage);
     }
      // @in - token we want to throw in
@@ -209,18 +210,23 @@ contract BshareFtmZap is Ownable {
     
     function swapToNative(address _in, uint256 amount, address routerAddr, address _recipient, uint256 slippage) external whitelist(routerAddr) {
         IERC20(_in).safeTransferFrom(msg.sender, address(this), amount);
-        _approveTokenIfNeeded(_in, amount, routerAddr);
+        _approveTokenIfNeeded(_in, routerAddr);
         _swapTokenForNative(_in, amount, _recipient, routerAddr, slippage);
     }
 
 
     /* ========== Private Functions ========== */
 
-    function _approveTokenIfNeeded(address token, uint256 amount, address router) private {
-        if (IERC20(token).allowance(address(this), router) <= amount) {
-            IERC20(token).safeApprove(router, IERC20(token).allowance(address(this), router).add(amount));
+    function _approveTokenIfNeeded(address token, address router) private {
+        if (IERC20(token).allowance(address(this), router) == 0) {
+            IERC20(token).safeApprove(router, type(uint256).max);
         }
     }
+    // function _approveTokenIfNeeded(address token, address router) private {
+    //     if (IERC20(token).allowance(address(this), router) == 0) {
+    //         IERC20(token).safeApprove(router, type(uint256).max);
+    //     }
+    // }
      // @in - token we want to throw in
     // @amount - amount of our token
     // @out - LP we want to get
@@ -240,9 +246,9 @@ contract BshareFtmZap is Ownable {
             args._token = args._in == IUniswapV2Pair(args._out).token0() ? IUniswapV2Pair(args._out).token1() : IUniswapV2Pair(args._out).token0();
             // calculate args._amount of _from to sell
             args._swapAmt = args._amount.div(2);
-            _approveTokenIfNeeded(args._token, args._swapAmt, args._routerAddr);
-            // execute swap
             args._otherAmt = _swap(args._in, args._swapAmt, args._token, address(this), args._routerAddr,  args._slippage);
+            _approveTokenIfNeeded(args._token, args._routerAddr);
+            // execute swap
            
             (pair._amountToken0 , pair._amountToken1 , pair._liqTokenAmt) = IUniswapV2Router(args._routerAddr).addLiquidity(args._in, args._token, args._amount.sub(args._swapAmt), args._otherAmt, args._amount.sub(args._swapAmt).sub(args._amount.sub(args._swapAmt).mul( args._slippage).div(10000)) , args._otherAmt.sub(args._otherAmt.mul( args._slippage).div(10000)), args._recipient, block.timestamp);
             _dustDistribution(args._amount.sub(args._swapAmt), args._otherAmt, pair._amountToken0, pair._amountToken1, args._in, args._token, args._recipient);
@@ -271,10 +277,10 @@ contract BshareFtmZap is Ownable {
         uint256 nativeDust = token0.sub(amountToken0);
         uint256 tokenDust = token1.sub(amountToken1);
         if (nativeDust > 0) {
-            IERC20(native).safeTransferFrom(address(this), recipient, nativeDust);
+            IERC20(native).safeTransfer(recipient, nativeDust);
         }
         if (tokenDust > 0) {
-            IERC20(token).safeTransferFrom(address(this), recipient, tokenDust);
+            IERC20(token).safeTransfer(recipient, tokenDust);
         }
 
     }
@@ -297,16 +303,16 @@ contract BshareFtmZap is Ownable {
 
         if (pair._token0 == NATIVE) {
             args._otherAmt= _swapNativeForToken(pair._token1, args._swapAmt, address(this), args._routerAddr, args._slippage);
-            _approveTokenIfNeeded(pair._token0, args._swapAmt, args._routerAddr);
-            _approveTokenIfNeeded(pair._token1, args._otherAmt, args._routerAddr);
+            _approveTokenIfNeeded(pair._token0, args._routerAddr);
+            _approveTokenIfNeeded(pair._token1, args._routerAddr);
 
             (pair._amountToken0, pair._amountToken1, pair._liqTokenAmt) = router.addLiquidity(pair._token0, pair._token1, args._swapAmt, args._otherAmt, args._swapAmt.sub(args._swapAmt.mul(args._slippage).div(10000)), args._otherAmt.sub(args._otherAmt.mul(args._slippage).div(10000)), args._recipient, block.timestamp);
             _dustDistribution(args._swapAmt, args._otherAmt, pair._amountToken0, pair._amountToken1, pair._token0, pair._token1, args._recipient);
             return pair._liqTokenAmt;
         } else {
             args._otherAmt = _swapNativeForToken(pair._token0,  args._swapAmt, address(this), args._routerAddr, args._slippage);
-            _approveTokenIfNeeded( pair._token0, args._otherAmt, args._routerAddr);
-            _approveTokenIfNeeded( pair._token1, args._swapAmt, args._routerAddr);
+            _approveTokenIfNeeded( pair._token0, args._routerAddr);
+            _approveTokenIfNeeded( pair._token1, args._routerAddr);
             (pair._amountToken0, pair._amountToken1, pair._liqTokenAmt) = router.addLiquidity(pair._token0, pair._token1, args._otherAmt, args._amount.sub( args._swapAmt), args._otherAmt.sub(args._otherAmt.mul(args._slippage).div(10000)), 
             args._swapAmt.sub((args._swapAmt).mul(args._slippage).div(10000)), args._recipient, block.timestamp);
             _dustDistribution(args._otherAmt, args._amount.sub( args._swapAmt), pair._amountToken0, pair._amountToken1,  pair._token1, pair._token0, args._recipient);
