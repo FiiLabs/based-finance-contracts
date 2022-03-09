@@ -222,14 +222,7 @@ contract Zapper is Ownable {
             IERC20(token).safeApprove(router, type(uint256).max);
         }
     }
-    // function _approveTokenIfNeeded(address token, address router) private {
-    //     if (IERC20(token).allowance(address(this), router) == 0) {
-    //         IERC20(token).safeApprove(router, type(uint256).max);
-    //     }
-    // }
-     // @in - token we want to throw in
-    // @amount - amount of our token
-    // @out - LP we want to get
+    
     function _swapTokenToLP(address _in, uint256 amount, address out, address recipient, address routerAddr, uint256 slippage) private returns (uint256) {
        
         FunctionArgs memory args;
