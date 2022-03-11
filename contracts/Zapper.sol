@@ -129,7 +129,7 @@ contract Zapper is Ownable {
 
     // from Native to an LP token through the specified router
     // @ out - LP we want to get out of this
-    function nativeZapIn(uint256 amount, address out, address routerAddr, address recipient, uint256 slippage) external payable {
+    function nativeZapIn(uint256 amount, address out, address routerAddr, address recipient, uint256 slippage) external whitelist (routerAddr) {
          IERC20(NATIVE).safeTransferFrom(msg.sender, address(this), amount);
          _approveTokenIfNeeded(NATIVE, routerAddr);
         _swapNativeToLP(out, amount, recipient, routerAddr, slippage);
