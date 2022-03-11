@@ -5,11 +5,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "../utils/ContractGuard.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 // Note that this pool has no minter key of BASED (rewards).
 // Instead, the governance will call BASED distributeReward method and send reward to this pool at the beginning.
-contract BasedGenesisRewardPool is ContractGuard {
+contract BasedGenesisRewardPool is ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -182,7 +182,7 @@ contract BasedGenesisRewardPool is ContractGuard {
     }
 
     // Update reward variables of the given pool to be up-to-date.
-    function updatePool(uint256 _pid) public {
+    function updatePool(uint256 _pid) private  {
         PoolInfo storage pool = poolInfo[_pid];
         if (block.timestamp <= pool.lastRewardTime) {
             return;
@@ -207,7 +207,7 @@ contract BasedGenesisRewardPool is ContractGuard {
 
     // Deposit tokens.
 
-    function deposit(uint256 _pid, uint256 _amount) public onlyOneBlock {
+    function deposit(uint256 _pid, uint256 _amount) public nonReentrant {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_sender];
@@ -232,7 +232,7 @@ contract BasedGenesisRewardPool is ContractGuard {
     }
 
     // Withdraw tokens.
-    function withdraw(uint256 _pid, uint256 _amount) public onlyOneBlock {
+    function withdraw(uint256 _pid, uint256 _amount) public nonReentrant {
         address _sender = msg.sender;
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_sender];
