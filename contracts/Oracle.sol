@@ -79,10 +79,14 @@ contract Oracle is Epoch {
     /** @dev Updates 1-day EMA price from Uniswap.  */
     function update() external checkEpoch {
         (uint256 price0Cumulative, uint256 price1Cumulative, uint32 blockTimestamp) = UniswapV2OracleLibrary.currentCumulativePrices(address(pair));
-        uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+      
+      uint32 timeElapsed;
+       unchecked{
+        timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+       }
 
         // Ensure that at least one full period has passed since the last update
-        require(timeElapsed >= PERIOD, "UniswapPairOracle: PERIOD_NOT_ELAPSED");
+        require(timeElapsed >= PERIOD, " PERIOD_NOT_ELAPSED");
 
         if (timeElapsed == 0) {
             // prevent divided by zero
@@ -106,10 +110,14 @@ contract Oracle is Epoch {
     // note this will always return 0 before update has been called successfully for the first time.
     function consult(address _token, uint256 _amountIn) external view returns (uint144 amountOut) {
         uint32 blockTimestamp = UniswapV2OracleLibrary.currentBlockTimestamp();
-        uint32 timeElapsed = blockTimestamp - blockTimestampLast; // Overflow is desired
+        uint32 timeElapsed;
+       
+        unchecked {
+         timeElapsed = blockTimestamp - blockTimestampLast; // Overflow is desired
+        }
 
         // Ensure that the price is not stale
-        require((timeElapsed < (PERIOD + CONSULT_LENIENCY)) || ALLOW_STALE_CONSULTS, "UniswapPairOracle: PRICE_IS_STALE_NEED_TO_CALL_UPDATE");
+        require((timeElapsed < (PERIOD + CONSULT_LENIENCY)) || ALLOW_STALE_CONSULTS, "STALE_PRICE_NEED_TO_CALL_UPDATE");
 
         if (_token == token0) {
             amountOut = price0Average.mul(_amountIn).decode144();
@@ -125,7 +133,7 @@ contract Oracle is Epoch {
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
 
         // Ensure that the price is not stale
-        require((timeElapsed < (PERIOD + CONSULT_LENIENCY)) || ALLOW_STALE_CONSULTS, "UniswapPairOracle: PRICE_IS_STALE_NEED_TO_CALL_UPDATE");
+        require((timeElapsed < (PERIOD + CONSULT_LENIENCY)) || ALLOW_STALE_CONSULTS, " STALE_PRICE_NEED_TO_CALL_UPDATE");
 
 
         if (_token == token0) {
