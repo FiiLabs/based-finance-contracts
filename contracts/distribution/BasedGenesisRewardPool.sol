@@ -198,7 +198,8 @@ contract BasedGenesisRewardPool is ContractGuard {
         }
         if (totalAllocPoint > 0) {
             uint256 _generatedReward = getGeneratedReward(pool.lastRewardTime, block.timestamp);
-            uint256 _basedReward = _generatedReward.mul(pool.allocPoint).div(totalAllocPoint);
+            uint256 multiplyHelper = _generatedReward.mul(pool.allocPoint);
+            uint256 _basedReward = multiplyHelper.div(totalAllocPoint);
             pool.accBasedPerShare = pool.accBasedPerShare.add(_basedReward.mul(1e18).div(tokenSupply));
         }
         pool.lastRewardTime = block.timestamp;
