@@ -213,8 +213,125 @@ contract Zapper is Ownable {
         _approveTokenIfNeeded(_in, routerAddr);
         _swapTokenForNative(_in, amount, _recipient, routerAddr, slippage);
     }
+// @_in - token we want to throw in
+    // @amount - amount of our _in
+    // @out - token we want to get out
+    function _swap(address _in, uint256 amount, address out, address recipient, address routerAddr, uint256 slippage) public whitelist(routerAddr) returns (uint256) {
+        IUniswapV2Router router = IUniswapV2Router(routerAddr);
 
+        address fromBridge = tokenBridgeForRouter[_in][routerAddr];
+        address toBridge = tokenBridgeForRouter[out][routerAddr];
 
+        address[] memory path;
+
+        if (fromBridge != address(0) && toBridge != address(0)) {
+            if (fromBridge != toBridge) {
+                path = new address[](5);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = NATIVE;
+                path[3] = toBridge;
+                path[4] = out;
+            } else {
+                path = new address[](3);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = out;
+            }
+        } else if (fromBridge != address(0)) {
+            if (out == NATIVE) {
+                path = new address[](3);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = NATIVE;
+            } else {
+                path = new address[](4);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = NATIVE;
+                path[3] = out;
+            }
+        } else if (toBridge != address(0)) {
+            path = new address[](4);
+            path[0] = _in;
+            path[1] = NATIVE;
+            path[2] = toBridge;
+            path[3] = out;
+        } else if (_in == NATIVE || out == NATIVE) {
+            path = new address[](2);
+            path[0] = _in;
+            path[1] = out;
+        } else {
+            // Go through Native
+            path = new address[](3);
+            path[0] = _in;
+            path[1] = NATIVE;
+            path[2] = out;
+        }
+        uint256 tokenAmountEst = _estimateSwap(_in, amount, out, routerAddr);
+
+        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmountEst.sub(tokenAmountEst.mul(slippage).div(10000)), path, recipient, block.timestamp);
+        return amounts[amounts.length - 1];
+    }
+    // @_in - token we want to throw in
+    // @amount - amount of our _in
+    // @out - token we want to get out
+    function _estimateSwap(address _in, uint256 amount, address out, address routerAddr) public view whitelist(routerAddr) returns (uint256) {
+        IUniswapV2Router router = IUniswapV2Router(routerAddr);
+
+        address fromBridge = tokenBridgeForRouter[_in][routerAddr];
+        address toBridge = tokenBridgeForRouter[out][routerAddr];
+
+        address[] memory path;
+
+        if (fromBridge != address(0) && toBridge != address(0)) {
+            if (fromBridge != toBridge) {
+                path = new address[](5);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = NATIVE;
+                path[3] = toBridge;
+                path[4] = out;
+            } else {
+                path = new address[](3);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = out;
+            }
+        } else if (fromBridge != address(0)) {
+            if (out == NATIVE) {
+                path = new address[](3);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = NATIVE;
+            } else {
+                path = new address[](4);
+                path[0] = _in;
+                path[1] = fromBridge;
+                path[2] = NATIVE;
+                path[3] = out;
+            }
+        } else if (toBridge != address(0)) {
+            path = new address[](4);
+            path[0] = _in;
+            path[1] = NATIVE;
+            path[2] = toBridge;
+            path[3] = out;
+        } else if (_in == NATIVE || out == NATIVE) {
+            path = new address[](2);
+            path[0] = _in;
+            path[1] = out;
+        } else {
+            // Go through Native
+            path = new address[](3);
+            path[0] = _in;
+            path[1] = NATIVE;
+            path[2] = out;
+        }
+
+        uint256[] memory amounts = router.getAmountsOut(amount, path);
+        return amounts[amounts.length - 1];
+    }
     /* ========== Private Functions ========== */
 
     function _approveTokenIfNeeded(address token, address router) private {
@@ -353,125 +470,8 @@ contract Zapper is Ownable {
         uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmt.sub(tokenAmt.mul(slippage).div(10000)), path, recipient, block.timestamp);
         return amounts[amounts.length - 1];
     }
-    // @_in - token we want to throw in
-    // @amount - amount of our _in
-    // @out - token we want to get out
-    function _swap(address _in, uint256 amount, address out, address recipient, address routerAddr, uint256 slippage) private returns (uint256) {
-        IUniswapV2Router router = IUniswapV2Router(routerAddr);
-
-        address fromBridge = tokenBridgeForRouter[_in][routerAddr];
-        address toBridge = tokenBridgeForRouter[out][routerAddr];
-
-        address[] memory path;
-
-        if (fromBridge != address(0) && toBridge != address(0)) {
-            if (fromBridge != toBridge) {
-                path = new address[](5);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = NATIVE;
-                path[3] = toBridge;
-                path[4] = out;
-            } else {
-                path = new address[](3);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = out;
-            }
-        } else if (fromBridge != address(0)) {
-            if (out == NATIVE) {
-                path = new address[](3);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = NATIVE;
-            } else {
-                path = new address[](4);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = NATIVE;
-                path[3] = out;
-            }
-        } else if (toBridge != address(0)) {
-            path = new address[](4);
-            path[0] = _in;
-            path[1] = NATIVE;
-            path[2] = toBridge;
-            path[3] = out;
-        } else if (_in == NATIVE || out == NATIVE) {
-            path = new address[](2);
-            path[0] = _in;
-            path[1] = out;
-        } else {
-            // Go through Native
-            path = new address[](3);
-            path[0] = _in;
-            path[1] = NATIVE;
-            path[2] = out;
-        }
-        uint256 tokenAmountEst = _estimateSwap(_in, amount, out, routerAddr);
-
-        uint256[] memory amounts = router.swapExactTokensForTokens(amount, tokenAmountEst.sub(tokenAmountEst.mul(slippage).div(10000)), path, recipient, block.timestamp);
-        return amounts[amounts.length - 1];
-    }
-    // @_in - token we want to throw in
-    // @amount - amount of our _in
-    // @out - token we want to get out
-    function _estimateSwap(address _in, uint256 amount, address out, address routerAddr) private view returns (uint256) {
-        IUniswapV2Router router = IUniswapV2Router(routerAddr);
-
-        address fromBridge = tokenBridgeForRouter[_in][routerAddr];
-        address toBridge = tokenBridgeForRouter[out][routerAddr];
-
-        address[] memory path;
-
-        if (fromBridge != address(0) && toBridge != address(0)) {
-            if (fromBridge != toBridge) {
-                path = new address[](5);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = NATIVE;
-                path[3] = toBridge;
-                path[4] = out;
-            } else {
-                path = new address[](3);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = out;
-            }
-        } else if (fromBridge != address(0)) {
-            if (out == NATIVE) {
-                path = new address[](3);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = NATIVE;
-            } else {
-                path = new address[](4);
-                path[0] = _in;
-                path[1] = fromBridge;
-                path[2] = NATIVE;
-                path[3] = out;
-            }
-        } else if (toBridge != address(0)) {
-            path = new address[](4);
-            path[0] = _in;
-            path[1] = NATIVE;
-            path[2] = toBridge;
-            path[3] = out;
-        } else if (_in == NATIVE || out == NATIVE) {
-            path = new address[](2);
-            path[0] = _in;
-            path[1] = out;
-        } else {
-            // Go through Native
-            path = new address[](3);
-            path[0] = _in;
-            path[1] = NATIVE;
-            path[2] = out;
-        }
-
-        uint256[] memory amounts = router.getAmountsOut(amount, path);
-        return amounts[amounts.length - 1];
-    }
+    
+    
     // @ _fromLP - LP we want to throw in
     // @ _to - token we want to get out of our LP
     // @ minAmountToken0, minAmountToken1 - coming from UI (min amount of tokens coming from breaking our LP)
