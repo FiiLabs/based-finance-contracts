@@ -361,7 +361,24 @@ contract Zapper is Ownable {
             // execute swap
            
             (pair._amountToken0 , pair._amountToken1 , pair._liqTokenAmt) = IUniswapV2Router(args._routerAddr).addLiquidity(args._in, args._token, args._amount.sub(args._swapAmt), args._otherAmt, args._amount.sub(args._swapAmt).sub(args._amount.sub(args._swapAmt).mul( args._slippage).div(10000)) , args._otherAmt.sub(args._otherAmt.mul( args._slippage).div(10000)), args._recipient, block.timestamp);
-            _dustDistribution(args._amount.sub(args._swapAmt), args._otherAmt, pair._amountToken0, pair._amountToken1, args._in, args._token, args._recipient);
+            if (args._in == IUniswapV2Pair(args._out).token0()) {
+                _dustDistribution(  args._swapAmt, 
+                                    args._otherAmt, 
+                                    pair._amountToken0, 
+                                    pair._amountToken1, 
+                                    args._in, 
+                                    args._token, 
+                                    args._recipient);
+
+            } else {
+                 _dustDistribution( args._otherAmt, 
+                                    args._swapAmt, 
+                                    pair._amountToken0, 
+                                    pair._amountToken1, 
+                                    args._in, 
+                                    args._token, 
+                                    args._recipient);
+            }
             return pair._liqTokenAmt;
         } else {
             // go through native token for highest liquidity
