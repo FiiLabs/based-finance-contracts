@@ -170,6 +170,7 @@ contract BasedGenesisRewardPool is ReentrancyGuard {
             uint256 _basedReward = _multiplyHelper.div(totalAllocPoint);
             accBasedPerShare = accBasedPerShare.add(_basedReward.mul(1e18).div(tokenSupply));
         }
+        // ok so all multiplication can go first and then all divisions go last....same 1 line like before
         return user.amount.mul(accBasedPerShare).div(1e18).sub(user.rewardDebt);
     }
 
