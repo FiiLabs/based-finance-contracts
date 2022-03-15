@@ -10,6 +10,8 @@ contract ProfitDistribution is Operator {
 
     string public name = "ProfitDistribution"; // call it ProfitDistribution
 
+
+
     IERC20 public depositToken;
     address public burnAddress;
     uint256 public totalStaked;
