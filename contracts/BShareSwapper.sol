@@ -54,6 +54,12 @@ contract BShareSwapper is Operator {
         _;
     }
 
+     function _approveTokenIfNeeded(address token, address router) private {
+        if (IERC20(token).allowance(address(this), router) == 0) {
+            IERC20(token).safeApprove(router, type(uint256).max);
+        }
+    }
+
     function getBasedPrice() public view returns (uint256 basedPrice) {
         try IOracle(basedOracle).consult(based, 1e18) returns (uint144 price) {
             return uint256(price);
@@ -69,6 +75,10 @@ contract BShareSwapper is Operator {
         }
     }
     function redeemBonds(uint256 _bbondAmount, uint256 basedPrice) private returns (uint256) {
+
+         IERC20(bbond).safeTransferFrom(msg.sender, address(this), _bbondAmount);
+         _approveTokenIfNeeded(bbond, treasury);
+       
         try ITreasury(treasury).redeemBonds(_bbondAmount, basedPrice) {
         } catch {
             revert("Treasury: cant redeem bonds");
@@ -76,11 +86,16 @@ contract BShareSwapper is Operator {
         return getBasedBalance();
     }
 
-    function swap(address _in, uint256 amount, address out, address recipient, address routerAddr, uint256 slippage) private returns (uint256) {
-         try IZapper(zapper)._swap(_in, amount, out, recipient, routerAddr , slippage) returns (uint256 _bshareAmount) {
+    function swap(address _in, uint256 amount, address out, address recipient, address routerAddr, uint256 minAmountOfBshare) private returns (uint256) {
+        
+        IERC20(based).safeTransferFrom(address(this), zapper, amount);
+        _approveTokenIfNeeded(based, routerAddr);
+        
+         try IZapper(zapper)._swap(_in, amount, out, recipient, routerAddr , minAmountOfBshare) returns (uint256 _bshareAmount) {
+             require( _bshareAmount >= minAmountOfBshare, "amt < minAmountNeeded");
             return uint256(_bshareAmount);
         } catch {
-            revert("Treasury: failed to consult BSHARE price from the oracle");
+            revert("Treasury: failed to get BSHARE price");
         }
     }
    
@@ -90,7 +105,7 @@ contract BShareSwapper is Operator {
         return _bbondAmount.mul(bshareAmountPerBased).div(1e18);
     }
 
-    function swapBBondToBShare(uint256 _bbondAmount, address routerAddr, uint256 slippage) external whitelist(routerAddr) {
+    function swapBBondToBShare(uint256 _bbondAmount, address routerAddr, uint256 minAmountofBshare) external whitelist(routerAddr) {
         //check if we have the amount of bbonds we want to swap
         require(getBBondBalance(msg.sender) >= _bbondAmount, "Not enough BBond in wallet");
         
@@ -98,9 +113,9 @@ contract BShareSwapper is Operator {
         uint256 basedPrice = getBasedPrice();
         uint256 basedToSwap = redeemBonds(_bbondAmount, basedPrice);
        // check if we received based(should be more than bbonds because of higher rate in redeem in treasury)
-       require ( basedToSwap > _bbondAmount, "redeem bonds reverted"); 
+       require ( basedToSwap >= _bbondAmount, "redeem bonds reverted"); 
        // swap based to bshare
-        uint256 bshareReceived = swap(based, basedToSwap, bshare, msg.sender, routerAddr, slippage);
+        uint256 bshareReceived = swap(based, basedToSwap, bshare, msg.sender, routerAddr, minAmountofBshare);
 
         emit BBondSwapPerformed(msg.sender, _bbondAmount, bshareReceived);
     }
