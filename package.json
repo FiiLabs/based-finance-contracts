@@ -27,7 +27,8 @@
     "verify-fantom": "npx hardhat verify --contract contracts/Zapper.sol:Zapper --constructor-args scripts/verifyArgs.ts 0x8212bF28d4d4B22D46127Cc338Ae925777E767d5 --network fantom",
     "build": "npm run compile",
     "compile": "npx builder compile",
-    "test": "npx builder test"
+    "test": "npx builder test",
+    "local":"npx hardhat node"
   },
   "repository": {
     "type": "git",
