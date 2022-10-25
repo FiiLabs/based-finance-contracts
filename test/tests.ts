@@ -31,11 +31,17 @@ describe("Tests", function () {
         const hreBBondToken = await BBondToken.deploy();
         await hreBBondToken.deployed();
 
+        ///// BShareToken
+        const BShareToken = await ethers.getContractFactory("BShare");
+        const hreBShareToken = await BShareToken.deploy();
+        await hreBShareToken.deployed();
+
         return {
             hreSimepleERCFund, 
             hreTimeLock, 
             hreBasedToken,
             hreBBondToken,
+            hreBShareToken,
             owner, 
             addr1, 
             addr2,
@@ -105,5 +111,30 @@ describe("Tests", function () {
         expect(await hreBBondToken.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("0"));
     });
 
-    
+    it("BShare Burnable ERC20 Token", async function () {
+        const { hreBShareToken, owner , addr1, addr2, addr3} = await loadFixture(deploymentFixture);
+
+        // init mint
+        expect(await hreBShareToken.name()).to.equal("BSHARE");
+        expect(await hreBShareToken.symbol()).to.equal("BSHARE");
+        expect(await hreBShareToken.operator()).to.equal(owner.address);
+        expect(await hreBShareToken.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("10"));
+      
+        // burn (cannot mint)
+        await hreBShareToken.burn(ethers.utils.parseEther("1"));
+        expect(await hreBShareToken.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("9"));
+
+        // distributeReward only be called once
+        const FARMING_POOL_REWARD_ALLOC = "50000";
+        await hreBShareToken.distributeReward(addr1.address);
+        expect(await hreBShareToken.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther(FARMING_POOL_REWARD_ALLOC));
+        await expect(hreBShareToken.distributeReward(addr1.address)).to.be.revertedWith('only can distribute once');
+
+        // burnFrom (cannot mint)
+        await hreBShareToken.connect(addr1).transfer(addr2.address, ethers.utils.parseEther("1"));
+        expect(await hreBShareToken.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("49999"));
+        await hreBShareToken.connect(addr1).approve(owner.address, ethers.utils.parseEther(FARMING_POOL_REWARD_ALLOC));
+        await hreBShareToken.connect(owner).burnFrom(addr1.address, ethers.utils.parseEther("49999"));
+        expect(await hreBShareToken.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("0"));
+    });
 });
