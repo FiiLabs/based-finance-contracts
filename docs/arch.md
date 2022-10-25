@@ -144,6 +144,7 @@ Zapper有Ownable的权限，是一个比较底层的DEX。它有一个Native的�
 
 目前感觉本合约只通过IZapper这个接口用了_swap这个方法，其他的方法没有用。IZapper才提供两个方法。
 
+![](images/Zapper.png)
 
 ## Acropolis
 
