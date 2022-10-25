@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
 describe("Tests", function () {
-    async function deploymentFiture() {
+    async function deploymentFixture() {
         const [owner, addr1, addr2, addr3] = await ethers.getSigners();
 
         /////  Simpek ERC Fund Deploy
@@ -24,20 +24,29 @@ describe("Tests", function () {
         ///// BasedToken
         const BasedToken = await ethers.getContractFactory("Based");
         const hreBasedToken = await BasedToken.deploy();
-       
+        await hreBasedToken.deployed();
+
+        ///// BBondToken
+        const BBondToken = await ethers.getContractFactory("BBond");
+        const hreBBondToken = await BBondToken.deploy();
+        await hreBBondToken.deployed();
+
         return {
             hreSimepleERCFund, 
             hreTimeLock, 
-            hreBasedToken, 
+            hreBasedToken,
+            hreBBondToken,
             owner, 
             addr1, 
             addr2,
             addr3
         }
+
+
     }
   
     it("Based Burnable ERC20 Token", async function () {
-        const { hreBasedToken, owner , addr1, addr2, addr3} = await loadFixture(deploymentFiture);
+        const { hreBasedToken, owner , addr1, addr2, addr3} = await loadFixture(deploymentFixture);
 
         // init mint
         expect(await hreBasedToken.name()).to.equal("BASED");
@@ -63,7 +72,7 @@ describe("Tests", function () {
         // TODO: basedOracle setBasedOracle 
         // but _getBasedPrice is internal, seems not be used in this project
 
-        // distributeReward
+        // distributeReward only be called once
         const INIT_GENSIS_POOL = "27500";
         const INIT_DAPFUND = "1000";
         await hreBasedToken.distributeReward(addr2.address, addr3.address);
@@ -71,4 +80,30 @@ describe("Tests", function () {
         expect(await hreBasedToken.balanceOf(addr3.address)).to.equal(ethers.utils.parseEther(INIT_DAPFUND));
         await expect(hreBasedToken.distributeReward(addr2.address, addr3.address)).to.be.revertedWith('only can distribute once');
     });
+
+    it("BBond Burnable ERC20 Token", async function () {
+        const { hreBBondToken, owner , addr1, addr2, addr3} = await loadFixture(deploymentFixture);
+
+        // no init mint
+        expect(await hreBBondToken.name()).to.equal("BBOND");
+        expect(await hreBBondToken.symbol()).to.equal("BBOND");
+        expect(await hreBBondToken.operator()).to.equal(owner.address);
+        expect(await hreBBondToken.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("0"));
+
+        // mint burnFrom
+        await hreBBondToken.mint(addr1.address, ethers.utils.parseEther("12"));
+        expect(await hreBBondToken.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("12"));
+        await expect(hreBBondToken.burnFrom(addr1.address, ethers.utils.parseEther("10"))).to.be.revertedWith('ERC20: insufficient allowance');
+        await hreBBondToken.connect(addr1).approve(owner.address, ethers.utils.parseEther("13"));
+        await hreBBondToken.connect(owner).burnFrom(addr1.address, ethers.utils.parseEther("10"));
+        expect(await hreBBondToken.balanceOf(addr1.address)).to.equal(ethers.utils.parseEther("2"));
+        
+        // mint & burn
+        await hreBBondToken.mint(owner.address, ethers.utils.parseEther("15"));
+        expect(await hreBBondToken.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("15"));
+        await hreBBondToken.burn(ethers.utils.parseEther("15"));
+        expect(await hreBBondToken.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("0"));
+    });
+
+    
 });
