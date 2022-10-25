@@ -1,8 +1,8 @@
 import {HardhatUserConfig} from 'hardhat/types';
-import '@nomiclabs/hardhat-waffle';
 import 'hardhat-deploy-fake-erc20';
-import '@nomiclabs/hardhat-etherscan';
 import 'dotenv/config';
+
+import '@nomicfoundation/hardhat-toolbox'; 
 
 const config: HardhatUserConfig = {
     solidity: {
