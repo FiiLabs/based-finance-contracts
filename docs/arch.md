@@ -148,7 +148,14 @@ Zapper有Ownable的权限，是一个比较底层的DEX。它有一个Native的�
 
 ## Acropolis
 
+这个模块里面有一个ShareWrapper，就是BShare代币的简单封装，并且Acropolis合约会直接继承它，并初始化这个share合约的IERC20地址。
 
+Acropolis的初始化依赖Based，BShare，还有国库合约的地址。与国库合约一样，它除了继承Operator有Operator的权限，还有ContractGuard合约，这个合约提供了一个保护，一个块中这个合约只能被调用一次的modifier。
+
+![](images/Acropolis.png)
+
+
+acropolisHistory存储stake奖励的快照。快照是按照区块的高来存放的。
 
 
 
