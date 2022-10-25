@@ -23,7 +23,6 @@ describe("Tests", function () {
 
         ///// BasedToken
         const BasedToken = await ethers.getContractFactory("Based");
-        const 
 
         
         return {hreSimepleERCFund, owner, addr1, addr2}
