@@ -127,3 +127,5 @@ cache/
 cache/solidity-files-cache.json
 cache/console-history.txt
 artifacts/
+
+typechain-types/
