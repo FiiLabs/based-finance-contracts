@@ -60,7 +60,8 @@ describe("Tests", function () {
         await hreBasedToken.burn(ethers.utils.parseEther("15"));
         expect(await hreBasedToken.balanceOf(owner.address)).to.equal(ethers.utils.parseEther("5000"));
 
-        // TODO: basedOracle
+        // TODO: basedOracle setBasedOracle 
+        // but _getBasedPrice is internal, seems not be used in this project
 
         // distributeReward
         const INIT_GENSIS_POOL = "27500";
