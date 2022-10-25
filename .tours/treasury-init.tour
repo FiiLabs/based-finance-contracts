@@ -1,0 +1,37 @@
+{
+  "$schema": "https://aka.ms/codetour-schema",
+  "title": "treasury-init",
+  "steps": [
+    {
+      "file": "contracts/Treasury.sol",
+      "description": "可以看到对于initialize函数，初始化国库合约，需要先部署Based，BBond，BShare合约还有based预言机合约，Acropolis stake合约。还依赖于一个开始的时间戳。",
+      "line": 239,
+      "selection": {
+        "start": {
+          "line": 9,
+          "character": 42
+        },
+        "end": {
+          "line": 9,
+          "character": 57
+        }
+      }
+    },
+    {
+      "file": "contracts/Treasury.sol",
+      "description": "只有Operator可以调用，而且如果已经被初始化了，就不能再次调用这个函数了",
+      "line": 246
+    },
+    {
+      "file": "contracts/Treasury.sol",
+      "description": "本合约地址的Based代币余额为储备金保存的量。也就是储备是用Based代币表示的。",
+      "line": 276
+    },
+    {
+      "file": "contracts/Treasury.sol",
+      "description": "一些保费的参数，阈值和百分比",
+      "line": 268
+    }
+  ],
+  "ref": "main"
+}
