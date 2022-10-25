@@ -157,6 +157,9 @@ Acropolis的初始化依赖Based，BShare，还有国库合约的地址。与国
 
 acropolisHistory存储stake奖励的快照。快照是按照区块的高来存放的。
 
+- 对BShare的充提(stake, withdraw)
+- 提币的时候会有奖励，但要rewardLockupEpochs的时间周期过去以后，才可以拿到奖励，并提币成功
+
 
 
 
