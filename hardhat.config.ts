@@ -7,16 +7,37 @@ import '@nomicfoundation/hardhat-toolbox';
 const config: HardhatUserConfig = {
     solidity: {
         compilers: [
+            // for based
+            // {
+            //     version: '0.8.9',
+            //     settings: {
+            //         optimizer: {
+            //             enabled: true,
+            //             runs: 50,
+            //         },
+            //     },
+            // },
+            
+            // for compound
             {
-                version: '0.8.9',
+                version: '0.5.17',
                 settings: {
                     optimizer: {
                         enabled: true,
                         runs: 50,
                     },
                 },
-            },
+            }
         ],
+    },
+
+    paths: {
+        // sources: "./contracts",
+        // tests: "./test",
+        sources: "./compound-contracts",
+        tests: "./compound-tests",
+        cache: "./cache",
+        artifacts: "./artifacts"
     },
 
     networks: {
